@@ -1,0 +1,102 @@
+# custom vpc
+resource "aws_vpc" "custom_vpc" {
+  cidr_block = var.CIDR_BLOCK
+
+  tags = {
+    Name = "custom_vpc"
+  }
+}
+
+# internet gateway
+resource "aws_internet_gateway" "custom_igw" {
+  vpc_id = aws_vpc.custom_vpc.id
+
+  tags = {
+    Name = "custom_igw"
+  }
+}
+
+# public subnet
+resource "aws_subnet" "publicsubnet" {
+  vpc_id            = aws_vpc.custom_vpc.id
+  count             = 2
+  cidr_block        = cidrsubnet(aws_vpc.custom_vpc.cidr_block, 8, count.index)
+  availability_zone = var.AZS[count.index]
+  tags = {
+    Name = "public-subnet-${count.index}"
+  }
+}
+
+# private subnet
+resource "aws_subnet" "privatesubnet" {
+  vpc_id            = aws_vpc.custom_vpc.id
+  count             = 2
+  cidr_block        = cidrsubnet(aws_vpc.custom_vpc.cidr_block, 8, count.index + 2)
+  availability_zone = var.AZS[count.index]
+  tags = {
+    Name = "private-subnet-${count.index}"
+  }
+}
+
+# public Route table
+resource "aws_route_table" "public-rt" {
+  vpc_id = aws_vpc.custom_vpc.id
+
+  route {
+    cidr_block = var.GLOBAL_CIDR
+    gateway_id = aws_internet_gateway.custom_igw.id
+  }
+
+  tags = {
+    Name = "public-rt"
+  }
+}
+
+# private Route table
+resource "aws_route_table" "private-rt" {
+  vpc_id = aws_vpc.custom_vpc.id
+  route {
+    cidr_block     = var.GLOBAL_CIDR
+    nat_gateway_id = aws_nat_gateway.nat_gw.id
+  }
+  tags = {
+    Name = "private-rt"
+  }
+}
+
+# main RT association
+resource "aws_main_route_table_association" "main-rt-asso" {
+  vpc_id         = aws_vpc.custom_vpc.id
+  route_table_id = aws_route_table.public-rt.id
+}
+
+# public subnet association
+resource "aws_route_table_association" "publicsubnet_association" {
+  count          = 2
+  subnet_id      = aws_subnet.publicsubnet[count.index].id
+  route_table_id = aws_route_table.public-rt.id
+}
+
+# private subnet association
+resource "aws_route_table_association" "privatesubnet_association" {
+  count          = 2
+  subnet_id      = aws_subnet.privatesubnet[count.index].id
+  route_table_id = aws_route_table.private-rt.id
+}
+
+# 1. Elastic IP for the NAT Gateway
+resource "aws_eip" "nat_eip" {
+  domain = "vpc"
+  tags   = { Name = "nat-eip" }
+}
+
+# 2. NAT Gateway (Placed in the single Public Subnet)
+resource "aws_nat_gateway" "nat_gw" {
+  allocation_id = aws_eip.nat_eip.id
+  subnet_id     = aws_subnet.publicsubnet[0].id
+
+  tags       = { Name = "main-nat-gateway" }
+  depends_on = [aws_internet_gateway.custom_igw]
+}
+
+

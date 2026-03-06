@@ -1,0 +1,59 @@
+pipeline {
+    agent any
+    environment {
+        AWS_DEFAULT_REGION = credentials('AWS_DEFAULT_REGION') // E.g. ap-south-1
+        
+        // Inject sensitive Terraform variables via Jenkins Global Credentials
+        TF_VAR_DATABASE_URL = credentials('DATABASE_URL')
+        TF_VAR_REDIS_URL = credentials('REDIS_URL')
+        TF_VAR_ADMIN_PASSWORD = credentials('ADMIN_PASSWORD')
+        TF_VAR_POSTGRES_PASSWORD = credentials('POSTGRES_PASSWORD')
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                // This checks out your entire Git repository into the Jenkins workspace
+                checkout scm
+            }
+        }
+        stage('Terraform Plan') {
+            steps {
+                dir('infra') {
+                    withCredentials([
+                        string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
+                        sh 'terraform init'
+                        sh 'terraform validate'
+                        sh 'terraform plan -out=tfplan'
+                    }
+                }
+            }
+        }
+        stage('Terraform Apply') {
+            steps {
+                dir('infra') {
+                    withCredentials([
+                        string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
+                        sh 'terraform apply -auto-approve tfplan'
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            // Disk Space: Wipe the workspace so the next build starts fresh
+            cleanWs() 
+            echo 'Pipeline execution complete. Workspace cleaned.'
+        }
+        failure {
+            echo '❌ Terraform Deployment Failed! Check the Jenkins logs.'
+        }
+        success {
+            echo '✅ Terraform Deployment Succeeded! AWS Infrastructure is ready.'
+        }
+    }
+}

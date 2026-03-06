@@ -1,0 +1,94 @@
+pipeline {
+    agent any
+    environment {
+        AWS_DEFAULT_REGION = credentials('AWS_DEFAULT_REGION')
+        CLUSTER_NAME = credentials('CLUSTER_NAME')
+        SERVICE_NAME = credentials('BACKEND_SERVICE_NAME')
+        
+        ECR_REGISTRY = credentials('ECR_REGISTRY')
+        ECR_REPOSITORY = credentials('BACKEND_ECR_REPOSITORY')
+        IMAGE_TAG = "v${BUILD_NUMBER}"
+        
+        // Needed for JSON template replacements
+        DATABASE_URL = credentials('DATABASE_URL')
+        REDIS_URL = credentials('REDIS_URL')
+        ADMIN_PASSWORD = credentials('ADMIN_PASSWORD')
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                // Checkout the entire repository
+                checkout scm
+            }
+        }
+        stage('Build & Push Docker Image') {
+            steps {
+                dir('src/backend') {
+                    withCredentials([
+                        string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
+                        // 1. Authenticate Docker to AWS ECR
+                        sh "aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}"
+                        
+                        // 2. Build the Docker Image
+                        sh "docker build -t ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} ."
+                        
+                        // 3. Push to ECR
+                        sh "docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+                    }
+                }
+            }
+        }
+        stage('Deploy to ECS') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
+                    sh """
+                        # 1. Get AWS Account ID dynamically to build Execution Role ARN
+                        AWS_ACCOUNT_ID=\$(aws sts get-caller-identity --query Account --output text)
+                        EXECUTION_ROLE_ARN="arn:aws:iam::\${AWS_ACCOUNT_ID}:role/ecs-task-execution-role"
+                        
+                        # 2. Duplicate the template
+                        cp container-app/ecs/backend-task-def.json backend-task-def-ready.json
+                        
+                        # 3. Replace all placeholders using ~ as sed delimiter
+                        sed -i "s~<IMAGE_PLACEHOLDER>~${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}~g" backend-task-def-ready.json
+                        sed -i "s~<EXECUTION_ROLE_ARN>~\${EXECUTION_ROLE_ARN}~g" backend-task-def-ready.json
+                        sed -i "s~<AWS_REGION>~${AWS_DEFAULT_REGION}~g" backend-task-def-ready.json
+                        sed -i "s~<DATABASE_URL>~${DATABASE_URL}~g" backend-task-def-ready.json
+                        sed -i "s~<REDIS_URL>~${REDIS_URL}~g" backend-task-def-ready.json
+                        sed -i "s~<ADMIN_PASSWORD>~${ADMIN_PASSWORD}~g" backend-task-def-ready.json
+                        
+                        # 4. Register new task definition
+                        aws ecs register-task-definition --cli-input-json file://backend-task-def-ready.json --region ${AWS_DEFAULT_REGION}
+                        
+                        # 5. Deploy the new task definition
+                        aws ecs update-service --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --task-definition ${SERVICE_NAME}-task --force-new-deployment --region ${AWS_DEFAULT_REGION}
+                    """
+                }
+            }
+        }
+    }
+    post {
+        always {
+            // 1. Security: Log out of AWS ECR to prevent credential leakage
+            sh "docker logout ${ECR_REGISTRY} || true"
+            // 2. Hygiene: Clean up dangling Docker images left on the Jenkins node
+            sh 'docker system prune -f --filter "label!=keep" || true'
+
+            // 3. Disk Space: Wipe the workspace so the next build starts fresh
+            cleanWs() 
+
+            echo 'Pipeline execution complete. Workspace cleaned.'
+        }
+        success {
+            echo "✅ Deployment successful! ECS updated with image: ${IMAGE_TAG}"
+        }
+        failure {
+            echo "❌ Pipeline failed. Please check the logs."
+        }
+    }
+}

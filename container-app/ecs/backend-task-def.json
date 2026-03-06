@@ -1,0 +1,50 @@
+{
+    "family": "backend-task",
+    "networkMode": "awsvpc",
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "256",
+    "memory": "512",
+    "executionRoleArn": "<EXECUTION_ROLE_ARN>",
+    "containerDefinitions": [
+        {
+            "name": "backend-container",
+            "image": "<IMAGE_PLACEHOLDER>",
+            "essential": true,
+            "portMappings": [
+                {
+                    "containerPort": 3001,
+                    "hostPort": 3001,
+                    "protocol": "tcp"
+                }
+            ],
+            "environment": [
+                {
+                    "name": "PORT",
+                    "value": "3001"
+                },
+                {
+                    "name": "DATABASE_URL",
+                    "value": "<DATABASE_URL>"
+                },
+                {
+                    "name": "REDIS_URL",
+                    "value": "<REDIS_URL>"
+                },
+                {
+                    "name": "ADMIN_PASSWORD",
+                    "value": "<ADMIN_PASSWORD>"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/backend",
+                    "awslogs-region": "<AWS_REGION>",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            }
+        }
+    ]
+}

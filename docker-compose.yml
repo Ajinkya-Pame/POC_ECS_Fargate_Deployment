@@ -1,0 +1,51 @@
+version: '3.8'
+services:
+  database:
+    build:
+      context: ./src/database
+    environment:
+      POSTGRES_USER: cricket
+      POSTGRES_PASSWORD: cricketpassword
+      POSTGRES_DB: cricket_db
+    ports:
+      - "5432:5432"
+    networks:
+      - cricket-net
+
+  cache:
+    build:
+      context: ./src/cache
+    ports:
+      - "6379:6379"
+    networks:
+      - cricket-net
+
+  backend:
+    build:
+      context: ./src/backend
+    environment:
+      DATABASE_URL: postgres://cricket:cricketpassword@database:5432/cricket_db
+      REDIS_URL: redis://cache:6379
+      ADMIN_PASSWORD: admin123
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      - database
+      - cache
+    networks:
+      - cricket-net
+
+  frontend:
+    build:
+      context: ./src/frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - cricket-net
+
+networks:
+  cricket-net:
+    driver: bridge

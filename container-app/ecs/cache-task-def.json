@@ -1,0 +1,32 @@
+{
+    "family": "cache-task",
+    "networkMode": "awsvpc",
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "256",
+    "memory": "512",
+    "executionRoleArn": "<EXECUTION_ROLE_ARN>",
+    "containerDefinitions": [
+        {
+            "name": "cache-container",
+            "image": "<IMAGE_PLACEHOLDER>",
+            "essential": true,
+            "portMappings": [
+                {
+                    "containerPort": 6379,
+                    "hostPort": 6379,
+                    "protocol": "tcp"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/cache",
+                    "awslogs-region": "<AWS_REGION>",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            }
+        }
+    ]
+}
