@@ -147,10 +147,10 @@ module "ecs_service_database" {
   source                         = "./modules/ecs_service_database"
   CLUSTER_ID                     = module.ecs_cluster.cluster_id
   SERVICES                       = var.services
-  IMAGE_URL                      = module.ecr.repository_urls["database"]
+  IMAGE_URL                      = module.ecr.repository_urls["db"]
   PRIVATE_SUBNETS                = module.network.private_subnet_ids
   DATABASE_SG_ID                 = module.security.db_sg_id
-  DATABASE_SERVICE_DISCOVERY_ARN = module.cloud_map.service_discovery_arns["database"]
+  DATABASE_SERVICE_DISCOVERY_ARN = module.cloud_map.service_discovery_arns["db"]
   LOG_DRIVER                     = var.log_driver
   REGION                         = var.region
   EXECUTION_ROLE_ARN             = module.iam.task_execution_role_arn
