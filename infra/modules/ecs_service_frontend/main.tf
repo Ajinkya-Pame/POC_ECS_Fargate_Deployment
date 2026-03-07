@@ -48,6 +48,8 @@ resource "aws_ecs_service" "frontend_service" {
     assign_public_ip = false
   }
 
+  health_check_grace_period_seconds = 60
+
   load_balancer {
     target_group_arn = var.TARGET_GROUP_ARN
     container_name   = "${var.SERVICES[0]}-${var.CONTAINER}"

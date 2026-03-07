@@ -48,6 +48,8 @@ resource "aws_ecs_service" "cache_service" {
     assign_public_ip = false
   }
 
+  health_check_grace_period_seconds = 30
+
   # This is the Cloud Map integration!
   service_registries {
     registry_arn = var.CACHE_SERVICE_DISCOVERY_ARN

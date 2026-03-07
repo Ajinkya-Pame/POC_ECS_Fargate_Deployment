@@ -53,6 +53,8 @@ resource "aws_ecs_service" "database_service" {
     assign_public_ip = false
   }
 
+  health_check_grace_period_seconds = 120
+
 
 
   # This is the Cloud Map integration!

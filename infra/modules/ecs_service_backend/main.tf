@@ -54,6 +54,8 @@ resource "aws_ecs_service" "backend_service" {
     assign_public_ip = false
   }
 
+  health_check_grace_period_seconds = 60
+
   # This is the Cloud Map integration!
   service_registries {
     registry_arn = var.BACKEND_SERVICE_DISCOVERY_ARN

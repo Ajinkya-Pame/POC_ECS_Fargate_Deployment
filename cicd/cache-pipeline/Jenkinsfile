@@ -73,6 +73,14 @@ pipeline {
                 script { trivyScan() }
             }
         }
+        stage('Approve Prod Deployment') {
+            when {
+                expression { params.ENVIRONMENT == 'prod' }
+            }
+            steps {
+                input message: "Deploy ${IMAGE_TAG} to PRODUCTION?", ok: 'Deploy'
+            }
+        }
         stage('Deploy to ECS') {
             steps {
                 script { deployToECS() }
