@@ -1,10 +1,10 @@
 resource "aws_cloudwatch_log_group" "database_log_group" {
-  name              = "/${var.ECS_PREFIX}/${var.SERVICES[2]}"
+  name              = "/${var.ECS_PREFIX}/${var.SERVICES["db"]}"
   retention_in_days = var.RETENTION_DAYS
 }
 
 resource "aws_ecs_task_definition" "database_task" {
-  family                   = "${var.SERVICES[2]}-${var.TASK}"
+  family                   = "${var.SERVICES["db"]}-${var.TASK}"
   network_mode             = var.NETWORK_MODE
   requires_compatibilities = [var.REQ_COMPATIBILITY]
   cpu                      = var.DB_CPU
@@ -13,7 +13,7 @@ resource "aws_ecs_task_definition" "database_task" {
 
   container_definitions = jsonencode([
     {
-      name      = "${var.SERVICES[2]}-${var.CONTAINER}"
+      name      = "${var.SERVICES["db"]}-${var.CONTAINER}"
       image     = var.IMAGE_URL
       essential = true
       portMappings = [
@@ -41,7 +41,7 @@ resource "aws_ecs_task_definition" "database_task" {
 }
 
 resource "aws_ecs_service" "database_service" {
-  name            = "${var.SERVICES[2]}-${var.SERVICE}"
+  name            = "${var.SERVICES["db"]}-${var.SERVICE}"
   cluster         = var.CLUSTER_ID
   task_definition = aws_ecs_task_definition.database_task.arn
   launch_type     = var.REQ_COMPATIBILITY

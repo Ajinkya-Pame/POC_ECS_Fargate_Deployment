@@ -1,10 +1,10 @@
 resource "aws_cloudwatch_log_group" "backend_log_group" {
-  name              = "/${var.ECS_PREFIX}/${var.SERVICES[1]}"
+  name              = "/${var.ECS_PREFIX}/${var.SERVICES["backend"]}"
   retention_in_days = var.RETENTION_DAYS
 }
 
 resource "aws_ecs_task_definition" "backend_task" {
-  family                   = "${var.SERVICES[1]}-${var.TASK}"
+  family                   = "${var.SERVICES["backend"]}-${var.TASK}"
   network_mode             = var.NETWORK_MODE
   requires_compatibilities = [var.REQ_COMPATIBILITY]
   cpu                      = var.CPU
@@ -13,7 +13,7 @@ resource "aws_ecs_task_definition" "backend_task" {
 
   container_definitions = jsonencode([
     {
-      name      = "${var.SERVICES[1]}-${var.CONTAINER}"
+      name      = "${var.SERVICES["backend"]}-${var.CONTAINER}"
       image     = var.IMAGE_URL
       essential = true
       portMappings = [
@@ -42,7 +42,7 @@ resource "aws_ecs_task_definition" "backend_task" {
 }
 
 resource "aws_ecs_service" "backend_service" {
-  name            = "${var.SERVICES[1]}-${var.SERVICE}"
+  name            = "${var.SERVICES["backend"]}-${var.SERVICE}"
   cluster         = var.CLUSTER_ID
   task_definition = aws_ecs_task_definition.backend_task.arn
   launch_type     = var.REQ_COMPATIBILITY
