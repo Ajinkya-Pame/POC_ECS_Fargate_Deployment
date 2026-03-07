@@ -25,14 +25,15 @@ RUN rm -rf /usr/share/nginx/html/*
 # Copy the built assets from the previous 'build' stage
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Create a simple inline conf to handle React SPA routing and API proxy
+# Create Nginx config TEMPLATE with $BACKEND_URL placeholder
+# envsubst will replace this at container startup
 RUN rm /etc/nginx/conf.d/default.conf
-RUN echo "server { \
+RUN echo 'server { \
     listen 80; \
     location /api/ { \
-        proxy_pass http://backend:3001; \
+        proxy_pass http://${BACKEND_URL}; \
         proxy_http_version 1.1; \
-        proxy_set_header Connection ''; \
+        proxy_set_header Connection ""; \
         chunked_transfer_encoding off; \
         proxy_buffering off; \
         proxy_cache off; \
@@ -40,12 +41,12 @@ RUN echo "server { \
     location / { \
         root /usr/share/nginx/html; \
         index index.html index.htm; \
-        try_files \$uri \$uri/ /index.html; \
+        try_files $uri $uri/ /index.html; \
     } \
-}" >/etc/nginx/conf.d/default.conf
+}' >/etc/nginx/conf.d/default.conf.template
 
 # Expose port 80 (This aligns with ECS and ALB configurations)
 EXPOSE 80
 
-# Start Nginx when the container starts
-CMD ["nginx", "-g", "daemon off;"]
+# At startup: envsubst replaces $BACKEND_URL in template, then Nginx starts
+CMD ["/bin/sh", "-c", "envsubst '${BACKEND_URL}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
