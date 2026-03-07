@@ -9,8 +9,6 @@ variable "global_cidr" {
   type = string
 }
 
-
-
 variable "container_port" {
   type = number
 }
@@ -112,3 +110,185 @@ variable "desired_count" {
   default = 1
 }
 
+variable "ecs_prefix" {
+  type = string
+}
+
+variable "req_compatibility" {
+  type = string
+}
+
+variable "tcp_protocol" {
+  type = string
+}
+
+variable "service" {
+  type = string
+}
+
+variable "container" {
+  type = string
+}
+
+variable "task" {
+  type = string
+}
+
+variable "fargate_base" {
+  type = number
+}
+
+variable "fargate_weight" {
+  type = number
+}
+
+variable "app_name" {
+  type = string
+}
+
+variable "mutability" {
+  type = string
+}
+
+variable "enc_type" {
+  type = string
+}
+
+variable "routing_policy" {
+  type = string
+}
+
+variable "dns_description" {
+  type = string
+}
+
+variable "dns_record" {
+  type = string
+}
+
+variable "alb_type" {
+  type = string
+}
+
+variable "alb_tg_name" {
+  type = string
+}
+
+variable "http_protocol" {
+  type = string
+}
+
+variable "target_type" {
+  type = string
+}
+
+variable "hc_interval" {
+  type = number
+}
+
+variable "hc_timeout" {
+  type = number
+}
+
+variable "threshold" {
+  type = number
+}
+
+variable "alb_default_action" {
+  type = string
+}
+
+variable "alb_name" {
+  type = string
+}
+
+# ========== Global Tag Variables ==========
+variable "environment" {
+  type        = string
+  description = "Deployment environment (dev, staging, prod)"
+}
+
+variable "project" {
+  type        = string
+  description = "Project name for cost tracking"
+}
+
+variable "owner" {
+  type        = string
+  description = "Team or individual responsible"
+}
+
+variable "cost_center" {
+  type        = string
+  description = "Cost center for billing"
+}
+
+# ========== Resource-Specific Name Tag Variables ==========
+variable "vpc_name" {
+  type = string
+}
+
+variable "igw_name" {
+  type = string
+}
+
+variable "public_subnet_name" {
+  type = string
+}
+
+variable "private_subnet_name" {
+  type = string
+}
+
+variable "public_rt_name" {
+  type = string
+}
+
+variable "private_rt_name" {
+  type = string
+}
+
+variable "nat_eip_name" {
+  type = string
+}
+
+variable "nat_gw_name" {
+  type = string
+}
+
+variable "alb_sg_name" {
+  type = string
+}
+
+variable "frontend_sg_name" {
+  type = string
+}
+
+variable "backend_sg_name" {
+  type = string
+}
+
+variable "db_sg_name" {
+  type = string
+}
+
+variable "cache_sg_name" {
+  type = string
+}
+
+variable "exec_role_name" {
+  type = string
+}
+
+variable "hc_path" {
+  type = string
+}
+
+variable "force_delete_ecr" {
+  type    = bool
+  default = true
+}
+
+variable "all_protocol" {
+  type = string
+}

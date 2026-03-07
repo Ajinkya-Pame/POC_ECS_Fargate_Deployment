@@ -20,11 +20,11 @@ resource "aws_security_group" "alb_sg" {
   egress {
     from_port   = var.ZERO_PORT
     to_port     = var.ZERO_PORT
-    protocol    = "-1"
+    protocol    = var.ALL_PROTOCOL
     cidr_blocks = [var.GLOBAL_CIDR]
   }
 
-  tags = { Name = "alb-sg" }
+  tags = { Name = "${var.ENVIRONMENT}-${var.ALB_SG_NAME}" }
 }
 
 resource "aws_security_group" "frontend_sg" {
@@ -41,13 +41,13 @@ resource "aws_security_group" "frontend_sg" {
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    from_port   = var.ZERO_PORT
+    to_port     = var.ZERO_PORT
+    protocol    = var.ALL_PROTOCOL
     cidr_blocks = [var.GLOBAL_CIDR]
   }
 
-  tags = { Name = "frontend-sg" }
+  tags = { Name = "${var.ENVIRONMENT}-${var.FRONTEND_SG_NAME}" }
 }
 
 resource aws_security_group "backend_sg" {
@@ -66,11 +66,11 @@ resource aws_security_group "backend_sg" {
   egress {
     from_port   = var.ZERO_PORT
     to_port     = var.ZERO_PORT
-    protocol    = "-1"
+    protocol    = var.ALL_PROTOCOL
     cidr_blocks = [var.GLOBAL_CIDR]
   }
 
-  tags = { Name = "backend-sg" }
+  tags = { Name = "${var.ENVIRONMENT}-${var.BACKEND_SG_NAME}" }
 }
 
 resource "aws_security_group" "db_sg" {
@@ -89,11 +89,11 @@ resource "aws_security_group" "db_sg" {
   egress {
     from_port   = var.ZERO_PORT
     to_port     = var.ZERO_PORT
-    protocol    = "-1"
+    protocol    = var.ALL_PROTOCOL
     cidr_blocks = [var.GLOBAL_CIDR]
   }
 
-  tags = { Name = "db-sg" }
+  tags = { Name = "${var.ENVIRONMENT}-${var.DB_SG_NAME}" }
 }
 
 resource "aws_security_group" "cache_sg" {
@@ -112,11 +112,11 @@ resource "aws_security_group" "cache_sg" {
   egress {
     from_port   = var.ZERO_PORT
     to_port     = var.ZERO_PORT
-    protocol    = "-1"
+    protocol    = var.ALL_PROTOCOL
     cidr_blocks = [var.GLOBAL_CIDR]
   }
 
-  tags = { Name = "cache-sg" }
+  tags = { Name = "${var.ENVIRONMENT}-${var.CACHE_SG_NAME}" }
 }
 
 

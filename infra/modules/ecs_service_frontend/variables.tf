@@ -61,3 +61,27 @@ variable "RETENTION_DAYS" {
 variable "DESIRED_COUNT" {
   type = number
 }
+
+variable "ECS_PREFIX" {
+  type = string
+}
+
+variable "REQ_COMPATIBILITY" {
+  type = string
+}
+
+variable "TCP_PROTOCOL" {
+  type = string
+}
+
+variable "SERVICE" {
+  type = string
+}
+
+variable "CONTAINER" {
+  type = string
+}
+
+variable "TASK" {
+  type = string
+}

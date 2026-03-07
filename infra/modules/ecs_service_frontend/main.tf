@@ -1,26 +1,26 @@
 resource "aws_cloudwatch_log_group" "frontend_log_group" {
-  name              = "/ecs/${var.SERVICES[0]}"
+  name              = "/${var.ECS_PREFIX}/${var.SERVICES[0]}"
   retention_in_days = var.RETENTION_DAYS
 }
 
 resource "aws_ecs_task_definition" "frontend_task" {
-  family                   = "${var.SERVICES[0]}-task"
+  family                   = "${var.SERVICES[0]}-${var.TASK}"
   network_mode             = var.NETWORK_MODE
-  requires_compatibilities = ["FARGATE"]
+  requires_compatibilities = [var.REQ_COMPATIBILITY]
   cpu                      = var.CPU
   memory                   = var.MEMORY
   execution_role_arn       = var.EXECUTION_ROLE_ARN
 
   container_definitions = jsonencode([
     {
-      name      = "${var.SERVICES[0]}-container"
+      name      = "${var.SERVICES[0]}-${var.CONTAINER}"
       image     = "${var.IMAGE_URL}"
       essential = true
       portMappings = [
         {
           containerPort = var.CONTAINER_PORT
           hostPort      = var.CONTAINER_PORT
-          protocol      = "tcp"
+          protocol      = var.TCP_PROTOCOL
         }
       ]
       logConfiguration = {
@@ -28,7 +28,7 @@ resource "aws_ecs_task_definition" "frontend_task" {
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.frontend_log_group.name
           "awslogs-region"        = var.REGION
-          "awslogs-stream-prefix" = "ecs"
+          "awslogs-stream-prefix" = var.ECS_PREFIX
         }
       }
     }
@@ -36,10 +36,10 @@ resource "aws_ecs_task_definition" "frontend_task" {
 }
 
 resource "aws_ecs_service" "frontend_service" {
-  name            = "${var.SERVICES[0]}-service"
+  name            = "${var.SERVICES[0]}-${var.SERVICE}"
   cluster         = var.CLUSTER_ID
   task_definition = aws_ecs_task_definition.frontend_task.arn
-  launch_type     = "FARGATE"
+  launch_type     = var.REQ_COMPATIBILITY
   desired_count   = var.DESIRED_COUNT
 
   network_configuration {
@@ -50,7 +50,7 @@ resource "aws_ecs_service" "frontend_service" {
 
   load_balancer {
     target_group_arn = var.TARGET_GROUP_ARN
-    container_name   = "${var.SERVICES[0]}-container" 
+    container_name   = "${var.SERVICES[0]}-${var.CONTAINER}"
     container_port   = var.CONTAINER_PORT
   }
 

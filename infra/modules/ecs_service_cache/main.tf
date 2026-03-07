@@ -1,26 +1,26 @@
 resource "aws_cloudwatch_log_group" "cache_log_group" {
-  name              = "/ecs/${var.SERVICES[3]}"
+  name              = "/${var.ECS_PREFIX}/${var.SERVICES[3]}"
   retention_in_days = var.RETENTION_DAYS
 }
 
 resource "aws_ecs_task_definition" "cache_task" {
-  family                   = "${var.SERVICES[3]}-task"
+  family                   = "${var.SERVICES[3]}-${var.TASK}"
   network_mode             = var.NETWORK_MODE
-  requires_compatibilities = ["FARGATE"]
+  requires_compatibilities = [var.REQ_COMPATIBILITY]
   cpu                      = var.CPU
   memory                   = var.MEMORY
   execution_role_arn       = var.EXECUTION_ROLE_ARN
 
   container_definitions = jsonencode([
     {
-      name      = "${var.SERVICES[3]}-container"
+      name      = "${var.SERVICES[3]}-${var.CONTAINER}"
       image     = "${var.IMAGE_URL}"
       essential = true
       portMappings = [
         {
           containerPort = var.CACHE_PORT
           hostPort      = var.CACHE_PORT
-          protocol      = "tcp"
+          protocol      = var.TCP_PROTOCOL
         }
       ]
       logConfiguration = {
@@ -28,7 +28,7 @@ resource "aws_ecs_task_definition" "cache_task" {
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.cache_log_group.name
           "awslogs-region"        = var.REGION
-          "awslogs-stream-prefix" = "ecs"
+          "awslogs-stream-prefix" = var.ECS_PREFIX
         }
       }
     }
@@ -36,10 +36,10 @@ resource "aws_ecs_task_definition" "cache_task" {
 }
 
 resource "aws_ecs_service" "cache_service" {
-  name            = "${var.SERVICES[3]}-service"
+  name            = "${var.SERVICES[3]}-${var.SERVICE}"
   cluster         = var.CLUSTER_ID
   task_definition = aws_ecs_task_definition.cache_task.arn
-  launch_type     = "FARGATE"
+  launch_type     = var.REQ_COMPATIBILITY
   desired_count   = var.DESIRED_COUNT
 
   network_configuration {

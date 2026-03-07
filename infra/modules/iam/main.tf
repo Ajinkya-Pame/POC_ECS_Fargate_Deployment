@@ -1,6 +1,6 @@
 # 1. The Execution Role
 resource "aws_iam_role" "ecs_task_execution_role" {
-  name = "ecs-task-execution-role"
+  name = var.EXEC_ROLE_NAME
 
   # Trust Policy: Allows the ECS service to assume this role
   assume_role_policy = jsonencode({
@@ -16,7 +16,7 @@ resource "aws_iam_role" "ecs_task_execution_role" {
     ]
   })
 
-  tags = { Name = "ecs-execution-role" }
+  tags = { Name = "${var.ENVIRONMENT}-${var.EXEC_ROLE_NAME}" }
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_execution_role_policy" {

@@ -69,3 +69,27 @@ variable "REDIS_URL" {
 variable "ADMIN_PASSWORD" {
   type = string
 }
+
+variable "ECS_PREFIX" {
+  type = string
+}
+
+variable "TASK" {
+  type = string
+}
+
+variable "REQ_COMPATIBILITY" {
+  type = string
+}
+
+variable "CONTAINER" {
+  type = string
+}
+
+variable "TCP_PROTOCOL" {
+  type = string
+}
+
+variable "SERVICE" {
+  type = string
+}

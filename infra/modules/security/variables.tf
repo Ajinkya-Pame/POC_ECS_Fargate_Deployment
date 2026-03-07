@@ -30,3 +30,30 @@ variable "CACHE_PORT" {
   type = number
 }
 
+variable "ENVIRONMENT" {
+  type = string
+}
+
+variable "ALB_SG_NAME" {
+  type = string
+}
+
+variable "FRONTEND_SG_NAME" {
+  type = string
+}
+
+variable "BACKEND_SG_NAME" {
+  type = string
+}
+
+variable "DB_SG_NAME" {
+  type = string
+}
+
+variable "CACHE_SG_NAME" {
+  type = string
+}
+
+variable "ALL_PROTOCOL" {
+  type = string
+}

@@ -1,15 +1,27 @@
 variable "VPC_ID" {
-  type        = string
+  type = string
 }
 
 variable "SERVICES" {
-  type        = list(string)
+  type = list(string)
 }
 
 variable "NAMESPACE" {
-  type        = string
+  type = string
 }
 
 variable "TTL" {
-  type        = number
+  type = number
+}
+
+variable "DNS_DESCRIPTION" {
+  type = string
+}
+
+variable "DNS_RECORD" {
+  type = string
+}
+
+variable "ROUTING_POLICY" {
+  type = string
 }

@@ -17,6 +17,15 @@ terraform {
 
 # Configure the AWS Provider
 provider "aws" {
-  region = "ap-south-1"
+  region = var.region
 
+  default_tags {
+    tags = {
+      Environment = var.environment
+      Project     = var.project
+      Owner       = var.owner
+      CostCenter  = var.cost_center
+      ManagedBy   = "Terraform"
+    }
+  }
 }

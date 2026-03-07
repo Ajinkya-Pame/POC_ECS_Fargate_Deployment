@@ -1,7 +1,7 @@
 # Create the Private DNS Namespace
 resource "aws_service_discovery_private_dns_namespace" "cricket" {
   name        = var.NAMESPACE
-  description = "Private namespace for ECS microservices"
+  description = var.DNS_DESCRIPTION
   vpc         = var.VPC_ID
 }
 
@@ -16,14 +16,13 @@ resource "aws_service_discovery_service" "cricket_services" {
 
     dns_records {
       ttl  = var.TTL
-      type = "A"
+      type = var.DNS_RECORD
     }
 
-    routing_policy = "MULTIVALUE"
+    routing_policy = var.ROUTING_POLICY
   }
 
   # Health check for ECS to ensure only healthy tasks are in DNS
-  health_check_custom_config {
-    failure_threshold = 1
-  }
+  health_check_custom_config {}
+
 }

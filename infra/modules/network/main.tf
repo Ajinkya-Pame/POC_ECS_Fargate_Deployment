@@ -3,7 +3,7 @@ resource "aws_vpc" "custom_vpc" {
   cidr_block = var.CIDR_BLOCK
 
   tags = {
-    Name = "custom_vpc"
+    Name = "${var.ENVIRONMENT}-${var.VPC_NAME}"
   }
 }
 
@@ -12,7 +12,7 @@ resource "aws_internet_gateway" "custom_igw" {
   vpc_id = aws_vpc.custom_vpc.id
 
   tags = {
-    Name = "custom_igw"
+    Name = "${var.ENVIRONMENT}-${var.IGW_NAME}"
   }
 }
 
@@ -23,7 +23,7 @@ resource "aws_subnet" "publicsubnet" {
   cidr_block        = cidrsubnet(aws_vpc.custom_vpc.cidr_block, 8, count.index)
   availability_zone = var.AZS[count.index]
   tags = {
-    Name = "public-subnet-${count.index}"
+    Name = "${var.ENVIRONMENT}-${var.PUBLIC_SUBNET_NAME}-${count.index}"
   }
 }
 
@@ -34,7 +34,7 @@ resource "aws_subnet" "privatesubnet" {
   cidr_block        = cidrsubnet(aws_vpc.custom_vpc.cidr_block, 8, count.index + 2)
   availability_zone = var.AZS[count.index]
   tags = {
-    Name = "private-subnet-${count.index}"
+    Name = "${var.ENVIRONMENT}-${var.PRIVATE_SUBNET_NAME}-${count.index}"
   }
 }
 
@@ -48,7 +48,7 @@ resource "aws_route_table" "public-rt" {
   }
 
   tags = {
-    Name = "public-rt"
+    Name = "${var.ENVIRONMENT}-${var.PUBLIC_RT_NAME}"
   }
 }
 
@@ -60,7 +60,7 @@ resource "aws_route_table" "private-rt" {
     nat_gateway_id = aws_nat_gateway.nat_gw.id
   }
   tags = {
-    Name = "private-rt"
+    Name = "${var.ENVIRONMENT}-${var.PRIVATE_RT_NAME}"
   }
 }
 
@@ -87,7 +87,7 @@ resource "aws_route_table_association" "privatesubnet_association" {
 # 1. Elastic IP for the NAT Gateway
 resource "aws_eip" "nat_eip" {
   domain = "vpc"
-  tags   = { Name = "nat-eip" }
+  tags   = { Name = "${var.ENVIRONMENT}-${var.NAT_EIP_NAME}" }
 }
 
 # 2. NAT Gateway (Placed in the single Public Subnet)
@@ -95,7 +95,7 @@ resource "aws_nat_gateway" "nat_gw" {
   allocation_id = aws_eip.nat_eip.id
   subnet_id     = aws_subnet.publicsubnet[0].id
 
-  tags       = { Name = "main-nat-gateway" }
+  tags       = { Name = "${var.ENVIRONMENT}-${var.NAT_GW_NAME}" }
   depends_on = [aws_internet_gateway.custom_igw]
 }
 

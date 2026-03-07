@@ -1,26 +1,26 @@
 resource "aws_cloudwatch_log_group" "backend_log_group" {
-  name              = "/ecs/${var.SERVICES[1]}"
+  name              = "/${var.ECS_PREFIX}/${var.SERVICES[1]}"
   retention_in_days = var.RETENTION_DAYS
 }
 
 resource "aws_ecs_task_definition" "backend_task" {
-  family                   = "${var.SERVICES[1]}-task"
+  family                   = "${var.SERVICES[1]}-${var.TASK}"
   network_mode             = var.NETWORK_MODE
-  requires_compatibilities = ["FARGATE"]
+  requires_compatibilities = [var.REQ_COMPATIBILITY]
   cpu                      = var.CPU
   memory                   = var.MEMORY
   execution_role_arn       = var.EXECUTION_ROLE_ARN
 
   container_definitions = jsonencode([
     {
-      name      = "${var.SERVICES[1]}-container"
+      name      = "${var.SERVICES[1]}-${var.CONTAINER}"
       image     = "${var.IMAGE_URL}"
       essential = true
       portMappings = [
         {
           containerPort = var.BACKEND_PORT
           hostPort      = var.BACKEND_PORT
-          protocol      = "tcp"
+          protocol      = var.TCP_PROTOCOL
         }
       ]
       environment = [
@@ -34,7 +34,7 @@ resource "aws_ecs_task_definition" "backend_task" {
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.backend_log_group.name
           "awslogs-region"        = var.REGION
-          "awslogs-stream-prefix" = "ecs"
+          "awslogs-stream-prefix" = var.ECS_PREFIX
         }
       }
     }
@@ -42,10 +42,10 @@ resource "aws_ecs_task_definition" "backend_task" {
 }
 
 resource "aws_ecs_service" "backend_service" {
-  name            = "${var.SERVICES[1]}-service"
+  name            = "${var.SERVICES[1]}-${var.SERVICE}"
   cluster         = var.CLUSTER_ID
   task_definition = aws_ecs_task_definition.backend_task.arn
-  launch_type     = "FARGATE"
+  launch_type     = var.REQ_COMPATIBILITY
   desired_count   = var.DESIRED_COUNT
 
   network_configuration {
@@ -53,8 +53,6 @@ resource "aws_ecs_service" "backend_service" {
     security_groups  = [var.BACKEND_SG_ID]
     assign_public_ip = false
   }
-
-
 
   # This is the Cloud Map integration!
   service_registries {
