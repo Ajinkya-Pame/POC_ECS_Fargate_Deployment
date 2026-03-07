@@ -113,6 +113,7 @@ module "ecs_service_frontend" {
   CONTAINER                      = var.container
   SERVICE                        = var.service
   TASK                           = var.task
+  SERVICE_NAME                   = var.services["frontend"]
 }
 
 module "ecs_service_backend" {
@@ -141,6 +142,7 @@ module "ecs_service_backend" {
   CONTAINER                     = var.container
   SERVICE                       = var.service
   TASK                          = var.task
+  SERVICE_NAME                  = var.services["backend"]
 }
 
 module "ecs_service_database" {
@@ -169,6 +171,7 @@ module "ecs_service_database" {
   CONTAINER                      = var.container
   SERVICE                        = var.service
   TASK                           = var.task
+  SERVICE_NAME                   = var.services["db"]
 }
 
 module "ecs_service_cache" {
@@ -194,5 +197,6 @@ module "ecs_service_cache" {
   CONTAINER                   = var.container
   SERVICE                     = var.service
   TASK                        = var.task
+  SERVICE_NAME                = var.services["cache"]
 }
 
