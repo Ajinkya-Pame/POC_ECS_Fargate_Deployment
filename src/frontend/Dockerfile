@@ -30,8 +30,10 @@ COPY --from=build /app/dist /usr/share/nginx/html
 RUN rm /etc/nginx/conf.d/default.conf
 RUN echo 'server { \
     listen 80; \
+    resolver 169.254.169.253 valid=10s ipv6=off; \
     location /api/ { \
-        proxy_pass http://${BACKEND_URL}; \
+        set $backend "http://${BACKEND_URL}"; \
+        proxy_pass $backend; \
         proxy_http_version 1.1; \
         proxy_set_header Connection ""; \
         chunked_transfer_encoding off; \
