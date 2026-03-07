@@ -1,0 +1,53 @@
+// ========== Functions ==========
+def terraformInit() {
+    sh "terraform init -backend-config=\"key=state/${params.ENVIRONMENT}/terraform.tfstate\""
+}
+
+def terraformDestroy() {
+    withCredentials([
+        string(credentialsId: "${params.ENVIRONMENT}_DATABASE_URL", variable: 'TF_VAR_DATABASE_URL'),
+        string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'TF_VAR_REDIS_URL'),
+        string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'TF_VAR_ADMIN_PASSWORD'),
+        string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD')
+    ]) {
+        sh "terraform destroy -var-file=environments/${params.ENVIRONMENT}.tfvars -auto-approve"
+    }
+}
+
+// ========== Pipeline ==========
+pipeline {
+    agent any
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Target environment to DESTROY')
+    }
+    environment {
+        AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
+        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+        AWS_DEFAULT_REGION    = 'ap-south-1'
+    }
+    stages {
+        stage('Terraform Init') {
+            steps {
+                dir('infra') {
+                    script { terraformInit() }
+                }
+            }
+        }
+        stage('Terraform Destroy !!') {
+            steps {
+                dir('infra') {
+                    input message: "Are you sure you want to DESTROY ${params.ENVIRONMENT} infrastructure?", ok: "Yes, Destroy Everything"
+                    script { terraformDestroy() }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            cleanWs()
+            echo 'Cleanup complete.'
+        }
+        success { echo "💥 Infrastructure Destroyed for ${params.ENVIRONMENT}!" }
+        failure { echo "❌ Destroy Failed! Check logs." }
+    }
+}

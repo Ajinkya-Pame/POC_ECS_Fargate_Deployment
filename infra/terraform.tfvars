@@ -7,7 +7,12 @@ db_port            = 5432
 cache_port         = 6379
 https_port         = 443
 zero_port          = 0
-services           = ["frontend", "backend", "db", "cache"]
+services          = {
+  frontend = "frontend"
+  backend  = "backend"
+  db       = "db"
+  cache    = "cache"
+}
 namespace          = "cricket.local"
 ttl                = 60
 CLUSTER_NAME       = "memecricket-fargate-cluster"

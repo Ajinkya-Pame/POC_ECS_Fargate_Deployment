@@ -34,7 +34,7 @@ variable "zero_port" {
 }
 
 variable "services" {
-  type = list(string)
+  type = map(string)
 }
 
 variable "namespace" {

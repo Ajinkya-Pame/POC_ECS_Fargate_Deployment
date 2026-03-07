@@ -1,5 +1,5 @@
 variable "SERVICES" {
-  type = list(string)
+  type = map(string)
 }
 
 variable "MUTABILITY" {

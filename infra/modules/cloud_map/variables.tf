@@ -3,7 +3,7 @@ variable "VPC_ID" {
 }
 
 variable "SERVICES" {
-  type = list(string)
+  type = map(string)
 }
 
 variable "NAMESPACE" {

@@ -7,7 +7,7 @@ resource "aws_service_discovery_private_dns_namespace" "cricket" {
 
 # Create a Service Discovery Service for each item in the list
 resource "aws_service_discovery_service" "cricket_services" {
-  for_each = toset(var.SERVICES)
+  for_each = var.SERVICES
 
   name = each.key
 

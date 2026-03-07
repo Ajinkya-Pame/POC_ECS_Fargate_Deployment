@@ -1,5 +1,5 @@
 resource "aws_ecr_repository" "cricket" {
-  for_each             = toset(var.SERVICES)
+  for_each             = var.SERVICES
   name                 = "${var.ENVIRONMENT}-${each.value}-${var.APP_NAME}"
   image_tag_mutability = var.MUTABILITY
 

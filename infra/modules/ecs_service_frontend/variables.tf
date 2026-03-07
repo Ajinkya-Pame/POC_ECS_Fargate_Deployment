@@ -3,7 +3,7 @@ variable "CLUSTER_ID" {
 }
 
 variable "SERVICES" {
-  type = list(string)
+  type = map(string)
 }
 
 variable "IMAGE_URL" {
