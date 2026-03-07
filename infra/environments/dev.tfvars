@@ -38,7 +38,7 @@ zero_port      = 0
 # ========== ECS Cluster ==========
 services          = ["frontend", "backend", "db", "cache"]
 CLUSTER_NAME      = "memecricket-dev-cluster"
-desired_count     = 1
+desired_count     = 0
 cpu               = "256"
 memory            = "512"
 db_cpu            = "512"
