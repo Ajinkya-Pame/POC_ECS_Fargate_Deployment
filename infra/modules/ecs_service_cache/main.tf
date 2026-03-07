@@ -14,7 +14,7 @@ resource "aws_ecs_task_definition" "cache_task" {
   container_definitions = jsonencode([
     {
       name      = "${var.SERVICES[3]}-${var.CONTAINER}"
-      image     = "${var.IMAGE_URL}"
+      image     = var.IMAGE_URL
       essential = true
       portMappings = [
         {

@@ -14,7 +14,7 @@ resource "aws_ecs_task_definition" "database_task" {
   container_definitions = jsonencode([
     {
       name      = "${var.SERVICES[2]}-${var.CONTAINER}"
-      image     = "${var.IMAGE_URL}"
+      image     = var.IMAGE_URL
       essential = true
       portMappings = [
         {
