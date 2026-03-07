@@ -1,16 +1,16 @@
 {
-    "family": "database-task",
+    "family": "db-task",
     "networkMode": "awsvpc",
     "requiresCompatibilities": [
         "FARGATE"
     ],
     "cpu": "512",
     "memory": "1024",
-    "executionRoleArn": "<EXECUTION_ROLE_ARN>",
+    "executionRoleArn": "$EXECUTION_ROLE_ARN",
     "containerDefinitions": [
         {
-            "name": "database-container",
-            "image": "<IMAGE_PLACEHOLDER>",
+            "name": "db-container",
+            "image": "$IMAGE_URI",
             "essential": true,
             "portMappings": [
                 {
@@ -22,22 +22,22 @@
             "environment": [
                 {
                     "name": "POSTGRES_DB",
-                    "value": "<POSTGRES_DB>"
+                    "value": "$POSTGRES_DB"
                 },
                 {
                     "name": "POSTGRES_USER",
-                    "value": "<POSTGRES_USER>"
+                    "value": "$POSTGRES_USER"
                 },
                 {
                     "name": "POSTGRES_PASSWORD",
-                    "value": "<POSTGRES_PASSWORD>"
+                    "value": "$POSTGRES_PASSWORD"
                 }
             ],
             "logConfiguration": {
                 "logDriver": "awslogs",
                 "options": {
-                    "awslogs-group": "/ecs/database",
-                    "awslogs-region": "<AWS_REGION>",
+                    "awslogs-group": "/ecs/db",
+                    "awslogs-region": "$AWS_DEFAULT_REGION",
                     "awslogs-stream-prefix": "ecs"
                 }
             }

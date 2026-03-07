@@ -1,14 +1,16 @@
 {
   "family": "frontend-task",
   "networkMode": "awsvpc",
-  "requiresCompatibilities": ["FARGATE"],
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
   "cpu": "256",
   "memory": "512",
-  "executionRoleArn": "<EXECUTION_ROLE_ARN>",
+  "executionRoleArn": "$EXECUTION_ROLE_ARN",
   "containerDefinitions": [
     {
       "name": "frontend-container",
-      "image": "<IMAGE_PLACEHOLDER>",
+      "image": "$IMAGE_URI",
       "essential": true,
       "portMappings": [
         {
@@ -17,11 +19,17 @@
           "protocol": "tcp"
         }
       ],
+      "environment": [
+        {
+          "name": "BACKEND_URL",
+          "value": "$BACKEND_URL"
+        }
+      ],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
           "awslogs-group": "/ecs/frontend",
-          "awslogs-region": "<AWS_REGION>",
+          "awslogs-region": "$AWS_DEFAULT_REGION",
           "awslogs-stream-prefix": "ecs"
         }
       }
