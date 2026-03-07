@@ -25,7 +25,7 @@ resource "aws_service_discovery_service" "cricket_services" {
   # Health check for ECS to ensure only healthy tasks are in DNS
   health_check_custom_config {}
 
-   lifecycle {
+  lifecycle {
     ignore_changes = [
       health_check_custom_config
     ]
