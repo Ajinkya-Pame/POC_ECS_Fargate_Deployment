@@ -1,9 +1,3 @@
-// ========== Environment Config (Non-Secret Values) ==========
-def ENV_CONFIG = [
-    dev:     [ CLUSTER_NAME: 'memecricket-dev-cluster' ],
-    staging: [ CLUSTER_NAME: 'memecricket-staging-cluster' ],
-    prod:    [ CLUSTER_NAME: 'memecricket-prod-cluster' ]
-]
 
 // ========== Functions ==========
 def setup() {
@@ -12,31 +6,36 @@ def setup() {
 }
 
 def buildAndPush() {
-    sh "aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}"
-    sh "docker build -t ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} ."
-    sh "docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+    sh 'aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY'
+    sh 'docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .'
+    sh 'docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'
 }
 
 def trivyScan() {
-    sh "trivy image --exit-code 0 --severity HIGH,CRITICAL ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+    sh 'trivy image --exit-code 0 --severity HIGH,CRITICAL $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'
 }
 
 def deployToECS() {
-    def config = ENV_CONFIG[params.ENVIRONMENT]
-    sh """
+    def ENV_CONFIG = [
+        dev:     [ CLUSTER_NAME: 'memecricket-dev-cluster' ],
+        staging: [ CLUSTER_NAME: 'memecricket-staging-cluster' ],
+        prod:    [ CLUSTER_NAME: 'memecricket-prod-cluster' ]
+    ]
+    env.CLUSTER_NAME = ENV_CONFIG[params.ENVIRONMENT].CLUSTER_NAME
+    sh '''
         export EXECUTION_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/ecs-task-execution-role"
         export IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
-        export BACKEND_URL="backend.${params.ENVIRONMENT}.cricket.local:3001"
+        export BACKEND_URL="backend.${ENVIRONMENT}.cricket.local:3001"
 
         envsubst < container-app/ecs/frontend-task-def.json > frontend-task-def-ready.json
 
         aws ecs register-task-definition --cli-input-json file://frontend-task-def-ready.json --region ${AWS_DEFAULT_REGION}
-        aws ecs update-service --cluster ${config.CLUSTER_NAME} --service ${SERVICE_NAME} --task-definition ${TASK_FAMILY} --force-new-deployment --region ${AWS_DEFAULT_REGION}
-    """
+        aws ecs update-service --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --task-definition ${TASK_FAMILY} --force-new-deployment --region ${AWS_DEFAULT_REGION}
+    '''
 }
 
 def cleanup() {
-    sh "docker logout ${ECR_REGISTRY} || true"
+    sh 'docker logout $ECR_REGISTRY || true'
     sh 'docker system prune -f --filter "label!=keep" || true'
     cleanWs()
 }
