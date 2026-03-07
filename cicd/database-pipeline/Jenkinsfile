@@ -1,94 +1,96 @@
+// ========== Environment Config (Non-Secret Values) ==========
+def ENV_CONFIG = [
+    dev:     [ CLUSTER_NAME: 'memecricket-dev-cluster' ],
+    staging: [ CLUSTER_NAME: 'memecricket-staging-cluster' ],
+    prod:    [ CLUSTER_NAME: 'memecricket-prod-cluster' ]
+]
+
+// ========== Functions ==========
+def setup() {
+    env.AWS_ACCOUNT_ID = sh(script: "aws sts get-caller-identity --query Account --output text", returnStdout: true).trim()
+    env.ECR_REPOSITORY = "${params.ENVIRONMENT}-db-memecricket"
+}
+
+def buildAndPush() {
+    sh "aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}"
+    sh "docker build -t ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} ."
+    sh "docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+}
+
+def trivyScan() {
+    sh "trivy image --exit-code 0 --severity HIGH,CRITICAL ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+}
+
+def deployToECS() {
+    withCredentials([
+        string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'POSTGRES_PASSWORD')
+    ]) {
+        def config = ENV_CONFIG[params.ENVIRONMENT]
+        sh """
+            export EXECUTION_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/ecs-task-execution-role"
+            export IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+
+            envsubst < container-app/ecs/database-task-def.json > database-task-def-ready.json
+
+            aws ecs register-task-definition --cli-input-json file://database-task-def-ready.json --region ${AWS_DEFAULT_REGION}
+            aws ecs update-service --cluster ${config.CLUSTER_NAME} --service ${SERVICE_NAME} --task-definition ${TASK_FAMILY} --force-new-deployment --region ${AWS_DEFAULT_REGION}
+        """
+    }
+}
+
+def cleanup() {
+    sh "docker logout ${ECR_REGISTRY} || true"
+    sh 'docker system prune -f --filter "label!=keep" || true'
+    cleanWs()
+}
+
+// ========== Pipeline ==========
 pipeline {
     agent any
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Target deployment environment')
+    }
     environment {
-        AWS_DEFAULT_REGION = credentials('AWS_DEFAULT_REGION')
-        CLUSTER_NAME = credentials('CLUSTER_NAME')
-        SERVICE_NAME = credentials('DB_SERVICE_NAME')
-        
-        ECR_REGISTRY = credentials('ECR_REGISTRY')
-        ECR_REPOSITORY = credentials('DB_ECR_REPOSITORY')
-        IMAGE_TAG = "v${BUILD_NUMBER}"
-        
-        // Needed for JSON template replacements
-        POSTGRES_DB = "cricket_db"
-        POSTGRES_USER = "cricket"
-        POSTGRES_PASSWORD = credentials('POSTGRES_PASSWORD')
+        AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
+        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+        ECR_REGISTRY          = credentials('ECR_REGISTRY')
+        AWS_DEFAULT_REGION    = 'ap-south-1'
+        SERVICE_NAME          = 'db-service'
+        TASK_FAMILY           = 'db-task'
+        IMAGE_TAG             = "v${BUILD_NUMBER}"
+        POSTGRES_DB           = 'cricket_db'
+        POSTGRES_USER         = 'cricket'
     }
     stages {
-        stage('Checkout') {
+        stage('Setup') {
             steps {
-                // Checkout the entire repository
-                checkout scm
+                script { setup() }
             }
         }
-        stage('Build & Push Docker Image') {
+        stage('Build & Push') {
             steps {
                 dir('src/database') {
-                    withCredentials([
-                        string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                        string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
-                    ]) {
-                        // 1. Authenticate Docker to AWS ECR
-                        sh "aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}"
-                        
-                        // 2. Build the Docker Image
-                        sh "docker build -t ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG} ."
-                        
-                        // 3. Push to ECR
-                        sh "docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
-                    }
+                    script { buildAndPush() }
                 }
+            }
+        }
+        stage('Security Scan') {
+            steps {
+                script { trivyScan() }
             }
         }
         stage('Deploy to ECS') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
-                    sh """
-                        # 1. Get AWS Account ID dynamically to build Execution Role ARN
-                        AWS_ACCOUNT_ID=\$(aws sts get-caller-identity --query Account --output text)
-                        EXECUTION_ROLE_ARN="arn:aws:iam::\${AWS_ACCOUNT_ID}:role/ecs-task-execution-role"
-                        
-                        # 2. Duplicate the template
-                        cp container-app/ecs/database-task-def.json database-task-def-ready.json
-                        
-                        # 3. Replace all placeholders using ~ as sed delimiter
-                        sed -i "s~<IMAGE_PLACEHOLDER>~${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}~g" database-task-def-ready.json
-                        sed -i "s~<EXECUTION_ROLE_ARN>~\${EXECUTION_ROLE_ARN}~g" database-task-def-ready.json
-                        sed -i "s~<AWS_REGION>~${AWS_DEFAULT_REGION}~g" database-task-def-ready.json
-                        sed -i "s~<POSTGRES_DB>~${POSTGRES_DB}~g" database-task-def-ready.json
-                        sed -i "s~<POSTGRES_USER>~${POSTGRES_USER}~g" database-task-def-ready.json
-                        sed -i "s~<POSTGRES_PASSWORD>~${POSTGRES_PASSWORD}~g" database-task-def-ready.json
-                        
-                        # 4. Register new task definition
-                        aws ecs register-task-definition --cli-input-json file://database-task-def-ready.json --region ${AWS_DEFAULT_REGION}
-                        
-                        # 5. Deploy the new task definition
-                        aws ecs update-service --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --task-definition ${SERVICE_NAME}-task --force-new-deployment --region ${AWS_DEFAULT_REGION}
-                    """
-                }
+                script { deployToECS() }
             }
         }
     }
     post {
         always {
-            // 1. Security: Log out of AWS ECR to prevent credential leakage
-            sh "docker logout ${ECR_REGISTRY} || true"
-            // 2. Hygiene: Clean up dangling Docker images left on the Jenkins node
-            sh 'docker system prune -f --filter "label!=keep" || true'
-
-            // 3. Disk Space: Wipe the workspace so the next build starts fresh
-            cleanWs() 
-
+            script { cleanup() }
             echo 'Pipeline execution complete. Workspace cleaned.'
         }
-        success {
-            echo "✅ Deployment successful! ECS updated with image: ${IMAGE_TAG}"
-        }
-        failure {
-            echo "❌ Pipeline failed. Please check the logs."
-        }
+        success { echo "✅ ${params.ENVIRONMENT} Deployment successful! Image: ${IMAGE_TAG}" }
+        failure { echo "❌ ${params.ENVIRONMENT} Pipeline failed. Please check the logs." }
     }
 }

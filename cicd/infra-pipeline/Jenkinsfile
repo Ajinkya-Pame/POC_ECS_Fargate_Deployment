@@ -1,59 +1,95 @@
+// ========== Functions ==========
+def terraformInit() {
+    sh "terraform init -backend-config=\"key=state/${params.ENVIRONMENT}/terraform.tfstate\""
+}
+
+def terraformValidate() {
+    sh 'terraform validate'
+}
+
+def securityScan() {
+    parallel(
+        'TFLint': { sh 'tflint --init && tflint --recursive' },
+        'TFSec':  { sh 'tfsec . --soft-fail' }
+    )
+}
+
+def terraformPlan() {
+    withCredentials([
+        string(credentialsId: "${params.ENVIRONMENT}_DATABASE_URL", variable: 'TF_VAR_DATABASE_URL'),
+        string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'TF_VAR_REDIS_URL'),
+        string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'TF_VAR_ADMIN_PASSWORD'),
+        string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD')
+    ]) {
+        sh "terraform plan -var-file=environments/${params.ENVIRONMENT}.tfvars -out=tfplan"
+    }
+}
+
+def terraformApply() {
+    withCredentials([
+        string(credentialsId: "${params.ENVIRONMENT}_DATABASE_URL", variable: 'TF_VAR_DATABASE_URL'),
+        string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'TF_VAR_REDIS_URL'),
+        string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'TF_VAR_ADMIN_PASSWORD'),
+        string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD')
+    ]) {
+        sh 'terraform apply -auto-approve tfplan'
+    }
+}
+
+// ========== Pipeline ==========
 pipeline {
     agent any
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Target deployment environment')
+    }
     environment {
-        AWS_DEFAULT_REGION = credentials('AWS_DEFAULT_REGION') // E.g. ap-south-1
-        
-        // Inject sensitive Terraform variables via Jenkins Global Credentials
-        TF_VAR_DATABASE_URL = credentials('DATABASE_URL')
-        TF_VAR_REDIS_URL = credentials('REDIS_URL')
-        TF_VAR_ADMIN_PASSWORD = credentials('ADMIN_PASSWORD')
-        TF_VAR_POSTGRES_PASSWORD = credentials('POSTGRES_PASSWORD')
+        AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
+        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+        AWS_DEFAULT_REGION    = 'ap-south-1'
     }
     stages {
-        stage('Checkout') {
+        stage('Terraform Init') {
             steps {
-                // This checks out your entire Git repository into the Jenkins workspace
-                checkout scm
+                dir('infra') {
+                    script { terraformInit() }
+                }
+            }
+        }
+        stage('Terraform Validate') {
+            steps {
+                dir('infra') {
+                    script { terraformValidate() }
+                }
+            }
+        }
+        stage('Security Scan') {
+            steps {
+                dir('infra') {
+                    script { securityScan() }
+                }
             }
         }
         stage('Terraform Plan') {
             steps {
                 dir('infra') {
-                    withCredentials([
-                        string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                        string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
-                    ]) {
-                        sh 'terraform init'
-                        sh 'terraform validate'
-                        sh 'terraform plan -out=tfplan'
-                    }
+                    script { terraformPlan() }
                 }
             }
         }
         stage('Terraform Apply') {
             steps {
                 dir('infra') {
-                    withCredentials([
-                        string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                        string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
-                    ]) {
-                        sh 'terraform apply -auto-approve tfplan'
-                    }
+                    script { terraformApply() }
                 }
             }
         }
     }
     post {
         always {
-            // Disk Space: Wipe the workspace so the next build starts fresh
-            cleanWs() 
+            cleanWs()
             echo 'Pipeline execution complete. Workspace cleaned.'
         }
-        failure {
-            echo '❌ Terraform Deployment Failed! Check the Jenkins logs.'
-        }
-        success {
-            echo '✅ Terraform Deployment Succeeded! AWS Infrastructure is ready.'
-        }
+        success { echo "✅ Terraform Deployment Succeeded for ${params.ENVIRONMENT}!" }
+        failure { echo "❌ Terraform Deployment Failed for ${params.ENVIRONMENT}! Check logs." }
     }
 }
