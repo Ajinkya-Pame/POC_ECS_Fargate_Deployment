@@ -1,6 +1,8 @@
 # custom vpc
 resource "aws_vpc" "custom_vpc" {
-  cidr_block = var.CIDR_BLOCK
+  cidr_block           = var.CIDR_BLOCK
+  enable_dns_hostnames = true
+  enable_dns_support   = true
 
   tags = {
     Name = "${var.ENVIRONMENT}-${var.VPC_NAME}"
