@@ -59,15 +59,18 @@ variable "DESIRED_COUNT" {
 }
 
 variable "DATABASE_URL" {
-  type = string
+  type      = string
+  sensitive = true
 }
 
 variable "REDIS_URL" {
-  type = string
+  type      = string
+  sensitive = true
 }
 
 variable "ADMIN_PASSWORD" {
-  type = string
+  type      = string
+  sensitive = true
 }
 
 variable "ECS_PREFIX" {

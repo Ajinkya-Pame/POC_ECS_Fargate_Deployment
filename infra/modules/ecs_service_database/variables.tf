@@ -67,7 +67,8 @@ variable "POSTGRES_USER" {
 }
 
 variable "POSTGRES_PASSWORD" {
-  type = string
+  type      = string
+  sensitive = true
 }
 
 variable "ECS_PREFIX" {

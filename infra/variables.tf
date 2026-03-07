@@ -74,15 +74,18 @@ variable "retention_days" {
 }
 
 variable "DATABASE_URL" {
-  type = string
+  type      = string
+  sensitive = true
 }
 
 variable "REDIS_URL" {
-  type = string
+  type      = string
+  sensitive = true
 }
 
 variable "ADMIN_PASSWORD" {
-  type = string
+  type      = string
+  sensitive = true
 }
 
 variable "db_cpu" {
@@ -102,7 +105,8 @@ variable "POSTGRES_USER" {
 }
 
 variable "POSTGRES_PASSWORD" {
-  type = string
+  type      = string
+  sensitive = true
 }
 
 variable "desired_count" {
