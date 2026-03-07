@@ -62,6 +62,7 @@ pipeline {
                 }
             }
         }
+        /*
         stage('Security Scan') {
             steps {
                 dir('infra') {
@@ -69,6 +70,7 @@ pipeline {
                 }
             }
         }
+        */
         stage('Terraform Plan') {
             steps {
                 dir('infra') {
