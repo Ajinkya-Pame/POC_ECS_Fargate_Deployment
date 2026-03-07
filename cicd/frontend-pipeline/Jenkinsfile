@@ -37,17 +37,6 @@ def deployToECS() {
 def cleanup() {
     sh 'docker logout $ECR_REGISTRY || true'
     sh 'docker system prune -f --filter "label!=keep" || true'
-    
-    // Immediately clean up untagged images in ECR to aggressively save on 500MB free quota
-    sh '''
-        UNTAGGED=$(aws ecr list-images --region $AWS_DEFAULT_REGION --repository-name $ECR_REPOSITORY --filter "tagStatus=UNTAGGED" --query 'imageIds[*]' --output json)
-        if [ "$UNTAGGED" != "[]" ] && [ "$UNTAGGED" != "null" ] && [ -n "$UNTAGGED" ]; then
-            echo "Deleting untagged images in $ECR_REPOSITORY to save ECR space..."
-            aws ecr batch-delete-image --region $AWS_DEFAULT_REGION --repository-name $ECR_REPOSITORY --image-ids "$UNTAGGED" || true
-        else
-            echo "No untagged images found to clean."
-        fi
-    '''
     cleanWs()
 }
 
