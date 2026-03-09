@@ -1,10 +1,10 @@
 resource "aws_cloudwatch_log_group" "frontend_log_group" {
-  name              = "/${var.ECS_PREFIX}/${var.SERVICES[var.SERVICE_NAME]}"
+  name              = "/${var.ECS_PREFIX}/${var.SERVICE_NAME}"
   retention_in_days = var.RETENTION_DAYS
 }
 
 resource "aws_ecs_task_definition" "frontend_task" {
-  family                   = "${var.SERVICES[var.SERVICE_NAME]}-${var.TASK}"
+  family                   = "${var.SERVICE_NAME}-${var.TASK}"
   network_mode             = var.NETWORK_MODE
   requires_compatibilities = [var.REQ_COMPATIBILITY]
   cpu                      = var.CPU
@@ -13,7 +13,7 @@ resource "aws_ecs_task_definition" "frontend_task" {
 
   container_definitions = jsonencode([
     {
-      name      = "${var.SERVICES[var.SERVICE_NAME]}-${var.CONTAINER}"
+      name      = "${var.SERVICE_NAME}-${var.CONTAINER}"
       image     = var.IMAGE_URL
       essential = true
       portMappings = [
@@ -36,7 +36,7 @@ resource "aws_ecs_task_definition" "frontend_task" {
 }
 
 resource "aws_ecs_service" "frontend_service" {
-  name            = "${var.SERVICES[var.SERVICE_NAME]}-${var.SERVICE}"
+  name            = "${var.SERVICE_NAME}-${var.SERVICE}"
   cluster         = var.CLUSTER_ID
   task_definition = aws_ecs_task_definition.frontend_task.arn
   launch_type     = var.REQ_COMPATIBILITY
@@ -52,7 +52,7 @@ resource "aws_ecs_service" "frontend_service" {
 
   load_balancer {
     target_group_arn = var.TARGET_GROUP_ARN
-    container_name   = "${var.SERVICES[var.SERVICE_NAME]}-${var.CONTAINER}"
+    container_name   = "${var.SERVICE_NAME}-${var.CONTAINER}"
     container_port   = var.CONTAINER_PORT
   }
 

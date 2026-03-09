@@ -5,10 +5,10 @@ owner       = "Ajinkya"
 cost_center = "CloudEthiX-POC"
 
 # ========== Networking ==========
-cidr_block         = "10.0.0.0/16"
-azs                = ["ap-south-1a", "ap-south-1b"]
-global_cidr        = "0.0.0.0/0"
-region             = "ap-south-1"
+cidr_block  = "10.0.0.0/16"
+azs         = ["ap-south-1a", "ap-south-1b"]
+global_cidr = "0.0.0.0/0"
+region      = "ap-south-1"
 
 # ========== Resource Name Tags ==========
 vpc_name            = "custom-vpc"
@@ -36,7 +36,7 @@ https_port     = 443
 zero_port      = 0
 
 # ========== ECS Cluster ==========
-services          = {
+services = {
   frontend = "frontend"
   backend  = "backend"
   db       = "db"

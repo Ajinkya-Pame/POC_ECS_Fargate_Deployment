@@ -2,8 +2,8 @@ variable "CLUSTER_ID" {
   type = string
 }
 
-variable "SERVICES" {
-  type = map(string)
+variable "SERVICE_NAME" {
+  type = string
 }
 
 variable "SERVICE_NAME" {
