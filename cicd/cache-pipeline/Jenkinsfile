@@ -125,7 +125,33 @@ def build() {
 
 def trivyScan() {
     echo("Scanning the Docker image for vulnerabilities")
-    sh 'trivy image --exit-code 0 --severity HIGH,CRITICAL $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'
+
+    sh '''
+    echo "Preparing Trivy cache directory"
+    mkdir -p /tmp/trivy-cache
+
+    echo "Downloading vulnerability database (if not already cached)"
+    trivy image --download-db-only --cache-dir /tmp/trivy-cache
+
+    echo "Running Trivy JSON scan"
+    trivy image \
+      --cache-dir /tmp/trivy-cache \
+      --exit-code 0 \
+      --severity HIGH,CRITICAL \
+      --format json \
+      -o trivy-report.json \
+      $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+    echo "Running Trivy HTML scan"
+    trivy image \
+      --cache-dir /tmp/trivy-cache \
+      --exit-code 0 \
+      --severity HIGH,CRITICAL \
+      --format template \
+      --template "@/usr/local/share/trivy/templates/html.tpl" \
+      -o trivy-report.html \
+      $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+    '''
 }
 
 def push(){
