@@ -1,7 +1,7 @@
 # ========== Environment ==========
 environment = "dev"
 project     = "memecricket"
-owner       = "Ajinkya"
+owner       = "MemeCricket Company"
 cost_center = "CloudEthiX-POC"
 
 # ========== Networking ==========
