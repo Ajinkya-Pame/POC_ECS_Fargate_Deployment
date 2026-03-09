@@ -72,13 +72,13 @@ module "cloud_map" {
 }
 
 module "ecr" {
-  source           = "./modules/ecr"
-  SERVICES         = var.services
-  ENC_TYPE         = var.enc_type
-  MUTABILITY       = var.mutability
-  APP_NAME         = var.app_name
-  FORCE_DELETE     = var.force_delete_ecr
-  ENVIRONMENT      = var.environment
+  source       = "./modules/ecr"
+  SERVICES     = var.services
+  ENC_TYPE     = var.enc_type
+  MUTABILITY   = var.mutability
+  APP_NAME     = var.app_name
+  FORCE_DELETE = var.force_delete_ecr
+  ENVIRONMENT  = var.environment
 }
 
 module "ecs_cluster" {
@@ -113,6 +113,7 @@ module "ecs_service_frontend" {
   CONTAINER                      = var.container
   SERVICE                        = var.service
   TASK                           = var.task
+  SERVICE_NAME                   = var.services["frontend"]
 }
 
 module "ecs_service_backend" {
@@ -141,6 +142,7 @@ module "ecs_service_backend" {
   CONTAINER                     = var.container
   SERVICE                       = var.service
   TASK                          = var.task
+  SERVICE_NAME                  = var.services["backend"]
 }
 
 module "ecs_service_database" {
@@ -169,6 +171,7 @@ module "ecs_service_database" {
   CONTAINER                      = var.container
   SERVICE                        = var.service
   TASK                           = var.task
+  SERVICE_NAME                   = var.services["db"]
 }
 
 module "ecs_service_cache" {
@@ -194,5 +197,6 @@ module "ecs_service_cache" {
   CONTAINER                   = var.container
   SERVICE                     = var.service
   TASK                        = var.task
+  SERVICE_NAME                = var.services["cache"]
 }
 
