@@ -92,7 +92,6 @@ module "ecs_cluster" {
 module "ecs_service_frontend" {
   source                         = "./modules/ecs_service_frontend"
   CLUSTER_ID                     = module.ecs_cluster.cluster_id
-  SERVICES                       = var.services
   IMAGE_URL                      = module.ecr.repository_urls["frontend"]
   CONTAINER_PORT                 = var.container_port
   PRIVATE_SUBNETS                = module.network.private_subnet_ids
@@ -119,7 +118,6 @@ module "ecs_service_frontend" {
 module "ecs_service_backend" {
   source                        = "./modules/ecs_service_backend"
   CLUSTER_ID                    = module.ecs_cluster.cluster_id
-  SERVICES                      = var.services
   IMAGE_URL                     = module.ecr.repository_urls["backend"]
   BACKEND_PORT                  = var.backend_port
   PRIVATE_SUBNETS               = module.network.private_subnet_ids
@@ -148,7 +146,6 @@ module "ecs_service_backend" {
 module "ecs_service_database" {
   source                         = "./modules/ecs_service_database"
   CLUSTER_ID                     = module.ecs_cluster.cluster_id
-  SERVICES                       = var.services
   IMAGE_URL                      = module.ecr.repository_urls["db"]
   PRIVATE_SUBNETS                = module.network.private_subnet_ids
   DATABASE_SG_ID                 = module.security.db_sg_id
@@ -177,7 +174,6 @@ module "ecs_service_database" {
 module "ecs_service_cache" {
   source                      = "./modules/ecs_service_cache"
   CLUSTER_ID                  = module.ecs_cluster.cluster_id
-  SERVICES                    = var.services
   IMAGE_URL                   = module.ecr.repository_urls["cache"]
   CACHE_PORT                  = var.cache_port
   PRIVATE_SUBNETS             = module.network.private_subnet_ids
