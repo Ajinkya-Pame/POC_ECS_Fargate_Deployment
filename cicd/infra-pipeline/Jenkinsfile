@@ -40,6 +40,12 @@ pipeline {
                 }
             }
         }
+
+        stage('Approve Resource Deployment') {
+            steps {
+                input message: "Deploy Infra?", ok: 'Deploy'
+            }
+        }
         stage('Terraform Apply') {
             steps {
                 dir('infra') {
