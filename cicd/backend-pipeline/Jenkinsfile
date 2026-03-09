@@ -42,6 +42,19 @@ pipeline {
                 script { push() }
             }
         }
+        stage('Push') {
+            steps {
+                script { push() }
+            }
+        }
+        stage('Deploy to ECS Dev') {
+            when {
+                expression { params.ENVIRONMENT == 'dev' }
+            }
+            steps {
+                script { deployToECS() }
+            }
+        }
         stage('Pull, Tag and Push to QA ECR') {
             when {
                 expression { params.ENVIRONMENT == 'qa' }
