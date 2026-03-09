@@ -1,18 +1,3 @@
-// ========== Functions ==========
-def terraformInit() {
-    sh "terraform init -backend-config=\"key=state/${params.ENVIRONMENT}/terraform.tfstate\""
-}
-
-def terraformDestroy() {
-    withCredentials([
-        string(credentialsId: "${params.ENVIRONMENT}_DATABASE_URL", variable: 'TF_VAR_DATABASE_URL'),
-        string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'TF_VAR_REDIS_URL'),
-        string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'TF_VAR_ADMIN_PASSWORD'),
-        string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD')
-    ]) {
-        sh "terraform destroy -var-file=environments/${params.ENVIRONMENT}.tfvars -auto-approve"
-    }
-}
 
 // ========== Pipeline ==========
 pipeline {
@@ -47,7 +32,26 @@ pipeline {
             cleanWs()
             echo 'Cleanup complete.'
         }
-        success { echo "💥 Infrastructure Destroyed for ${params.ENVIRONMENT}!" }
-        failure { echo "❌ Destroy Failed! Check logs." }
+        success { echo "Infrastructure Destroyed for ${params.ENVIRONMENT}!" }
+        failure { echo "Destroy Failed! Check logs." }
+    }
+}
+
+
+// ========== Functions ==========
+def terraformInit() {
+    echo("Initializing Terraform for ${params.ENVIRONMENT} environment")
+    sh "terraform init -backend-config=./environments/${params.ENVIRONMENT}/backend.config"
+}
+
+def terraformDestroy() {
+    echo("Destroying Terraform for ${params.ENVIRONMENT} environment")
+    withCredentials([
+        string(credentialsId: "${params.ENVIRONMENT}_DATABASE_URL", variable: 'TF_VAR_DATABASE_URL'),
+        string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'TF_VAR_REDIS_URL'),
+        string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'TF_VAR_ADMIN_PASSWORD'),
+        string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD')
+    ]) {
+        sh "terraform destroy -var-file=environments/${params.ENVIRONMENT}.tfvars -auto-approve"
     }
 }

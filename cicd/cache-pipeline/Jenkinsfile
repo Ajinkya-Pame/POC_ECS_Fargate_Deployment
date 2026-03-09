@@ -1,44 +1,3 @@
-
-// ========== Functions ==========
-def setup() {
-    env.AWS_ACCOUNT_ID = sh(script: "aws sts get-caller-identity --query Account --output text", returnStdout: true).trim()
-    env.ECR_REPOSITORY = "${params.ENVIRONMENT}-cache-memecricket"
-}
-
-def buildAndPush() {
-    sh 'aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY'
-    sh 'docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .'
-    sh 'docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'
-}
-
-def trivyScan() {
-    sh 'trivy image --exit-code 0 --severity HIGH,CRITICAL $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'
-}
-
-def deployToECS() {
-    def ENV_CONFIG = [
-        dev:     [ CLUSTER_NAME: 'memecricket-dev-cluster' ],
-        staging: [ CLUSTER_NAME: 'memecricket-staging-cluster' ],
-        prod:    [ CLUSTER_NAME: 'memecricket-prod-cluster' ]
-    ]
-    env.CLUSTER_NAME = ENV_CONFIG[params.ENVIRONMENT].CLUSTER_NAME
-    sh '''
-        export EXECUTION_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/ecs-task-execution-role"
-        export IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
-
-        envsubst < container-app/ecs/cache-task-def.json > cache-task-def-ready.json
-
-        aws ecs register-task-definition --cli-input-json file://cache-task-def-ready.json --region ${AWS_DEFAULT_REGION}
-        aws ecs update-service --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --task-definition ${TASK_FAMILY} --force-new-deployment --region ${AWS_DEFAULT_REGION}
-    '''
-}
-
-def cleanup() {
-    sh 'docker logout $ECR_REGISTRY || true'
-    sh 'docker system prune -f --filter "label!=keep" || true'
-    cleanWs()
-}
-
 // ========== Pipeline ==========
 pipeline {
     agent any
@@ -60,10 +19,13 @@ pipeline {
                 script { setup() }
             }
         }
-        stage('Build & Push') {
+        stage('Build image in DEV') {
+            when {
+                expression { params.ENVIRONMENT == 'dev' }
+            }
             steps {
                 dir('src/cache') {
-                    script { buildAndPush() }
+                    script { build() }
                 }
             }
         }
@@ -72,15 +34,58 @@ pipeline {
                 script { trivyScan() }
             }
         }
+        stage('Push to DEV ECR'){
+            when {
+                expression { params.ENVIRONMENT == 'dev' }
+            }
+            steps {
+                script { push() }
+            }
+        }
+        stage('Deploy to ECS DEV') {
+            when {
+                expression { params.ENVIRONMENT == 'dev' }
+            }
+            steps {
+                script { deployToECS() }
+            }
+        }
+        stage('pull and push image to QA'){
+            when {
+                expression { params.ENVIRONMENT == 'qa' }
+            }
+            steps {
+                script { pullTagAndPush() }
+            }
+        }
+        stage('DEploy to ECS in QA'){
+            when {
+                expression { params.ENVIRONMENT == 'qa' }
+            }
+            steps {
+                script { deployToECS() }
+            }
+        }
         stage('Approve Prod Deployment') {
             when {
                 expression { params.ENVIRONMENT == 'prod' }
             }
             steps {
-                input message: "Deploy ${IMAGE_TAG} to PRODUCTION?", ok: 'Deploy'
+                input message: "Push image and deploy application to ECS in PROD?", ok: 'Deploy'
             }
         }
-        stage('Deploy to ECS') {
+        stage('pull and push image to PROD'){
+            when {
+                expression { params.ENVIRONMENT == 'prod' }
+            }
+            steps {
+                script { pullTagAndPush() }
+            }
+        }
+        stage('Deploy to ECS PROD') {
+            when {
+                expression { params.ENVIRONMENT == 'prod' }
+            }
             steps {
                 script { deployToECS() }
             }
@@ -91,7 +96,77 @@ pipeline {
             script { cleanup() }
             echo 'Pipeline execution complete. Workspace cleaned.'
         }
-        success { echo "✅ ${params.ENVIRONMENT} Deployment successful! Image: ${IMAGE_TAG}" }
-        failure { echo "❌ ${params.ENVIRONMENT} Pipeline failed. Please check the logs." }
+        success { echo " ${params.ENVIRONMENT} Deployment successful! Image: ${IMAGE_TAG}" }
+        failure { echo " ${params.ENVIRONMENT} Pipeline failed. Please check the logs." }
     }
 }
+
+// ========== Functions ==========
+def setup() {
+    echo("Setting up the pipeline for ${params.ENVIRONMENT} environment")
+
+    echo("Getting AWS Account ID")
+    env.AWS_ACCOUNT_ID = sh(script: "aws sts get-caller-identity --query Account --output text", returnStdout: true).trim()
+
+    echo("Declaring ECR Repository for ${params.ENVIRONMENT} environment")
+    env.ECR_REPOSITORY = "${params.ENVIRONMENT}-cache-memecricket"
+
+    echo("Declaring Environment variable for shell script")
+    env.ENVIRONMENT = params.ENVIRONMENT
+
+    echo("Logging in to ECR")
+    sh 'aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY'
+}
+
+def buildAndPush() {
+    echo("Building the Docker image for ${params.ENVIRONMENT} environment")
+    sh 'docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .'
+
+    echo("Pushing the Docker image to ECR")
+    sh 'docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'
+}
+
+def trivyScan() {
+    echo("Scanning the Docker image for vulnerabilities")
+    sh 'trivy image --exit-code 0 --severity HIGH,CRITICAL $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'
+}
+
+def deployToECS() {
+    echo("Deploying the Docker image to ECS")
+    def ENV_CONFIG = [
+        dev:     [ CLUSTER_NAME: 'memecricket-dev-cluster' ],
+        staging: [ CLUSTER_NAME: 'memecricket-staging-cluster' ],
+        prod:    [ CLUSTER_NAME: 'memecricket-prod-cluster' ]
+    ]
+
+    echo("Declaring Cluster Name for ${params.ENVIRONMENT} environment")
+    env.CLUSTER_NAME = ENV_CONFIG[params.ENVIRONMENT].CLUSTER_NAME
+    sh '''
+        echo("Declaring Execution Role ARN for ${params.ENVIRONMENT} environment")
+        export EXECUTION_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/ecs-task-execution-role"
+
+        echo("Declaring Image URI for ${params.ENVIRONMENT} environment")
+        export IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+
+        echo("Substituting the values in the task definition")
+        envsubst < container-app/ecs/cache-task-def.json > cache-task-def-ready.json
+
+        echo("Registering the task definition")
+        aws ecs register-task-definition --cli-input-json file://cache-task-def-ready.json --region ${AWS_DEFAULT_REGION} > /dev/null
+
+        echo("Updating the service")
+        aws ecs update-service --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --task-definition ${TASK_FAMILY} --force-new-deployment --region ${AWS_DEFAULT_REGION} > /dev/null
+    '''
+}
+
+def cleanup() {
+    echo("Logging out from ECR")
+    sh 'docker logout $ECR_REGISTRY || true'
+
+    echo("Pruning the Docker system")
+    sh 'docker system prune -f --filter "label!=keep" || true'
+
+    echo("Cleaning up the workspace")
+    cleanWs()
+}
+

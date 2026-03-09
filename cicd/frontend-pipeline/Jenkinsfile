@@ -36,7 +36,10 @@ pipeline {
                 expression { params.ENVIRONMENT == 'dev' }
             }
             steps {
-                script { trivyScan() }
+                script { 
+                    trivyScan() 
+                    archiveArtifacts artifacts: 'trivy-report.json, trivy-report.html', fingerprint: true
+                }
             }
         }
 
@@ -103,33 +106,63 @@ pipeline {
             script { cleanup() }
             echo 'Pipeline execution complete. Workspace cleaned.'
         }
-        success { echo "✅ ${params.ENVIRONMENT} Deployment successful! Image: ${IMAGE_TAG}" }
-        failure { echo "❌ ${params.ENVIRONMENT} Pipeline failed. Please check the logs." }
+        success { echo " ${params.ENVIRONMENT} Deployment successful! Image: ${IMAGE_TAG}" }
+        failure { echo " ${params.ENVIRONMENT} Pipeline failed. Please check the logs." }
     }
 }
 
 // ========== Functions ==========
 def setup() {
+    echo("Setting up the pipeline for ${params.ENVIRONMENT} environment")
+
+    echo("Getting AWS Account ID")
     env.AWS_ACCOUNT_ID = sh(script: "aws sts get-caller-identity --query Account --output text", returnStdout: true).trim()
+
+    echo("Declaring ECR Repository for ${params.ENVIRONMENT} environment")
     env.ECR_REPOSITORY = "${params.ENVIRONMENT}-frontend-memecricket"
+
+    echo("Declaring Environment variable for shell script")
     env.ENVIRONMENT = params.ENVIRONMENT
+
+    echo("Logging in to ECR")
     sh 'aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY'
 }
 
 def build() {
+    echo("Building the Docker image for ${params.ENVIRONMENT} environment")
     sh 'docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .'
 }
 
 def trivyScan() {
-    sh 'trivy image --exit-code 0 --severity HIGH,CRITICAL $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'
+    echo("Scanning the Docker image for vulnerabilities")
+
+    sh '''
+    # JSON report
+    trivy image \
+      --exit-code 0 \
+      --severity HIGH,CRITICAL \
+      --format json \
+      -o trivy-report.json \
+      $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+    # HTML report
+    trivy image \
+      --exit-code 0 \
+      --severity HIGH,CRITICAL \
+      --format template \
+      --template "@/usr/local/share/trivy/templates/html.tpl" \
+      -o trivy-report.html \
+      $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+    '''
 }
 
 def push(){
+    echo("Pushing the Docker image to ECR")
     sh 'docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'
 }
 
 def pullTagAndPush(){
-
+    echo("Pulling, Tagging and Pushing the Docker image to ECR")
     def sourceRepo = ""
     def targetRepo = "${params.ENVIRONMENT}-frontend-memecricket"
 
@@ -142,34 +175,56 @@ def pullTagAndPush(){
     }
 
     sh """
+    echo("Pulling the Docker image from ECR")
     docker pull $ECR_REGISTRY/${sourceRepo}:$IMAGE_TAG
+
+    echo("Tagging the Docker image")
     docker tag $ECR_REGISTRY/${sourceRepo}:$IMAGE_TAG $ECR_REGISTRY/${targetRepo}:$IMAGE_TAG
+
+    echo("Pushing the Docker image to ECR")
     docker push $ECR_REGISTRY/${targetRepo}:$IMAGE_TAG
     """
 }
 
 def deployToECS() {
+    echo("Deploying the Docker image to ECS")
     def ENV_CONFIG = [
         dev:     [ CLUSTER_NAME: 'memecricket-dev-cluster' ],
         qa:      [ CLUSTER_NAME: 'memecricket-qa-cluster' ],
         prod:    [ CLUSTER_NAME: 'memecricket-prod-cluster' ]
     ]
-     env.CLUSTER_NAME = ENV_CONFIG[params.ENVIRONMENT].CLUSTER_NAME
+
+    echo("Declaring Cluster Name for ${params.ENVIRONMENT} environment")
+    env.CLUSTER_NAME = ENV_CONFIG[params.ENVIRONMENT].CLUSTER_NAME
     sh '''
+        echo("Declaring Execution Role ARN for ${params.ENVIRONMENT} environment")
         export EXECUTION_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/ecs-task-execution-role"
+
+        echo("Declaring Image URI for ${params.ENVIRONMENT} environment")
         export IMAGE_URI="${ECR_REGISTRY}/$ECR_REPOSITORY:${IMAGE_TAG}"
+
+        echo("Declaring Backend URL for ${params.ENVIRONMENT} environment")
         export BACKEND_URL="backend.${ENVIRONMENT}.cricket.local:3001"
 
+        echo("Substituting the values in the task definition")
         envsubst < container-app/ecs/frontend-task-def.json > frontend-task-def-ready.json
 
-        aws ecs register-task-definition --cli-input-json file://frontend-task-def-ready.json --region ${AWS_DEFAULT_REGION}
-        aws ecs update-service --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --task-definition ${TASK_FAMILY} --force-new-deployment --region ${AWS_DEFAULT_REGION}
+        echo("Registering the task definition")
+        aws ecs register-task-definition --cli-input-json file://frontend-task-def-ready.json --region ${AWS_DEFAULT_REGION} > /dev/null
+
+        echo("Updating the service")
+        aws ecs update-service --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --task-definition ${TASK_FAMILY} --force-new-deployment --region ${AWS_DEFAULT_REGION} > /dev/null
     '''
 }
 
 def cleanup() {
+    echo("Logging out from ECR")
     sh 'docker logout $ECR_REGISTRY || true'
+
+    echo("Pruning the Docker system")
     sh 'docker system prune -f --filter "label!=keep" || true'
+
+    echo("Cleaning up the workspace")
     cleanWs()
 }
 

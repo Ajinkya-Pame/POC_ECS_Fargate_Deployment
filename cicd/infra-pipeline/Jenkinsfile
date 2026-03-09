@@ -1,46 +1,8 @@
-// ========== Functions ==========
-def terraformInit() {
-    sh "terraform init -backend-config=\"key=state/${params.ENVIRONMENT}/terraform.tfstate\""
-}
-
-def terraformValidate() {
-    sh 'terraform validate'
-}
-
-def securityScan() {
-    parallel(
-        'TFLint': { sh 'tflint --init && tflint --recursive' },
-        'TFSec':  { sh 'tfsec . --soft-fail' }
-    )
-}
-
-def terraformPlan() {
-    withCredentials([
-        string(credentialsId: "${params.ENVIRONMENT}_DATABASE_URL", variable: 'TF_VAR_DATABASE_URL'),
-        string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'TF_VAR_REDIS_URL'),
-        string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'TF_VAR_ADMIN_PASSWORD'),
-        string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD')
-    ]) {
-        sh "terraform plan -var-file=environments/${params.ENVIRONMENT}.tfvars -out=tfplan"
-    }
-}
-
-def terraformApply() {
-    withCredentials([
-        string(credentialsId: "${params.ENVIRONMENT}_DATABASE_URL", variable: 'TF_VAR_DATABASE_URL'),
-        string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'TF_VAR_REDIS_URL'),
-        string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'TF_VAR_ADMIN_PASSWORD'),
-        string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD')
-    ]) {
-        sh 'terraform apply -auto-approve tfplan'
-    }
-}
-
 // ========== Pipeline ==========
 pipeline {
     agent any
     parameters {
-        choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Target deployment environment')
+        choice(name: 'ENVIRONMENT', choices: ['dev', 'qa', 'prod'], description: 'Target deployment environment')
     }
     environment {
         AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
@@ -88,10 +50,54 @@ pipeline {
     }
     post {
         always {
+            echo("Cleaning up the workspace")
             cleanWs()
             echo 'Pipeline execution complete. Workspace cleaned.'
         }
-        success { echo "✅ Terraform Deployment Succeeded for ${params.ENVIRONMENT}!" }
-        failure { echo "❌ Terraform Deployment Failed for ${params.ENVIRONMENT}! Check logs." }
+        success { echo " Terraform Deployment Succeeded for ${params.ENVIRONMENT}!" }
+        failure { echo " Terraform Deployment Failed for ${params.ENVIRONMENT}! Check logs." }
     }
 }
+
+// ========== Functions ==========
+def terraformInit() {
+    echo("Initializing Terraform for ${params.ENVIRONMENT} environment")
+    sh "terraform init -backend-config=./environments/${params.ENVIRONMENT}/backend.config"
+}
+
+def terraformValidate() {
+    echo("Validating Terraform for ${params.ENVIRONMENT} environment")
+    sh 'terraform validate'
+}
+
+def securityScan() {
+    parallel(
+        'TFLint': { sh 'tflint --init && tflint --recursive' },
+        'TFSec':  { sh 'tfsec . --soft-fail' }
+    )
+}
+
+def terraformPlan() {
+    echo("Planning Terraform for ${params.ENVIRONMENT} environment")
+    withCredentials([
+        string(credentialsId: "${params.ENVIRONMENT}_DATABASE_URL", variable: 'TF_VAR_DATABASE_URL'),
+        string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'TF_VAR_REDIS_URL'),
+        string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'TF_VAR_ADMIN_PASSWORD'),
+        string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD')
+    ]) {
+        sh "terraform plan -var-file=environments/${params.ENVIRONMENT}/${params.ENVIRONMENT}.tfvars -out=tfplan"
+    }
+}
+
+def terraformApply() {
+    echo("Applying Terraform for ${params.ENVIRONMENT} environment")
+    withCredentials([
+        string(credentialsId: "${params.ENVIRONMENT}_DATABASE_URL", variable: 'TF_VAR_DATABASE_URL'),
+        string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'TF_VAR_REDIS_URL'),
+        string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'TF_VAR_ADMIN_PASSWORD'),
+        string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD')
+    ]) {
+        sh 'terraform apply -auto-approve tfplan'
+    }
+}
+
