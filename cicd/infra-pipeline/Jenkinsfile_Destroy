@@ -1,9 +1,8 @@
-
-// ========== Pipeline ==========
+// ========== Destroy Pipeline ==========
 pipeline {
     agent any
     parameters {
-        choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Target environment to DESTROY')
+        choice(name: 'ENVIRONMENT', choices: ['dev', 'qa', 'prod'], description: 'Target environment to DESTROY')
     }
     environment {
         AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
@@ -18,10 +17,25 @@ pipeline {
                 }
             }
         }
-        stage('Terraform Destroy !!') {
+        
+        stage('Terraform Plan (Destroy)') {
             steps {
                 dir('infra') {
-                    input message: "Are you sure you want to DESTROY ${params.ENVIRONMENT} infrastructure?", ok: "Yes, Destroy Everything"
+                    script { terraformPlanDestroy() }
+                }
+            }
+        }
+
+        stage('Approve Resource Destruction') {
+            steps {
+                // Added a more alarming message to prevent accidental clicks
+                input message: "DANGER: Are you sure you want to DESTROY the ${params.ENVIRONMENT} infrastructure?", ok: 'Destroy Everything'
+            }
+        }
+        
+        stage('Terraform Destroy') {
+            steps {
+                dir('infra') {
                     script { terraformDestroy() }
                 }
             }
@@ -29,14 +43,14 @@ pipeline {
     }
     post {
         always {
+            echo("Cleaning up the workspace")
             cleanWs()
-            echo 'Cleanup complete.'
+            echo 'Pipeline execution complete. Workspace cleaned.'
         }
-        success { echo "Infrastructure Destroyed for ${params.ENVIRONMENT}!" }
-        failure { echo "Destroy Failed! Check logs." }
+        success { echo "Terraform Destruction Succeeded for ${params.ENVIRONMENT}!" }
+        failure { echo "Terraform Destruction Failed for ${params.ENVIRONMENT}! Check logs." }
     }
 }
-
 
 // ========== Functions ==========
 def terraformInit() {
@@ -44,14 +58,28 @@ def terraformInit() {
     sh "terraform init -backend-config=./environments/${params.ENVIRONMENT}/backend.config"
 }
 
-def terraformDestroy() {
-    echo("Destroying Terraform for ${params.ENVIRONMENT} environment")
+def terraformPlanDestroy() {
+    echo("Planning Terraform DESTROY for ${params.ENVIRONMENT} environment")
     withCredentials([
         string(credentialsId: "${params.ENVIRONMENT}_DATABASE_URL", variable: 'TF_VAR_DATABASE_URL'),
         string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'TF_VAR_REDIS_URL'),
         string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'TF_VAR_ADMIN_PASSWORD'),
         string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD')
     ]) {
-        sh "terraform destroy -var-file=environments/${params.ENVIRONMENT}.tfvars -auto-approve"
+        // Generates a destruction plan and saves it
+        sh "terraform plan -destroy -var-file=environments/${params.ENVIRONMENT}/${params.ENVIRONMENT}.tfvars -out=tfplan-destroy"
+    }
+}
+
+def terraformDestroy() {
+    echo("Executing Terraform DESTROY for ${params.ENVIRONMENT} environment")
+    withCredentials([
+        string(credentialsId: "${params.ENVIRONMENT}_DATABASE_URL", variable: 'TF_VAR_DATABASE_URL'),
+        string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'TF_VAR_REDIS_URL'),
+        string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'TF_VAR_ADMIN_PASSWORD'),
+        string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD')
+    ]) {
+        // Applies the destruction plan
+        sh 'terraform apply -auto-approve tfplan-destroy'
     }
 }
