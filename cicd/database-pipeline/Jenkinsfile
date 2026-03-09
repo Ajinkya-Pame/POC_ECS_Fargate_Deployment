@@ -124,33 +124,26 @@ def trivyScan() {
     echo("Scanning the Docker image for vulnerabilities")
 
     sh '''
-    echo "Preparing Trivy cache directory"
-    mkdir -p /tmp/trivy-cache
-
-    echo "Downloading vulnerability database (if not already cached)"
-    trivy image --download-db-only --cache-dir /tmp/trivy-cache
-
-    echo "Running Trivy JSON scan"
+    # 1. Scan the image ONCE and save as JSON. 
+    # (Trivy will automatically update its DB if needed, no need for manual cache steps)
     trivy image \
-      --cache-dir /tmp/trivy-cache \
       --exit-code 0 \
       --severity HIGH,CRITICAL \
       --format json \
       -o trivy-report.json \
       $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-    echo "Running Trivy HTML scan"
-    trivy image \
-      --cache-dir /tmp/trivy-cache \
-      --exit-code 0 \
-      --severity HIGH,CRITICAL \
+    # 2. Convert the JSON report to HTML locally (Blazing fast, no re-scanning)
+    trivy convert \
       --format template \
       --template "@/usr/local/share/trivy/templates/html.tpl" \
       -o trivy-report.html \
-      $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+      trivy-report.json
     '''
-}
 
+    // 3. Save the generated reports as Jenkins artifacts
+    archiveArtifacts artifacts: 'trivy-report.json, trivy-report.html', allowEmptyArchive: true
+}
 def push() {
     echo("Pushing the Docker image to ECR")
     sh 'docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'
@@ -170,10 +163,10 @@ def deployToECS() {
         echo("Declaring Cluster Name for ${params.ENVIRONMENT} environment")
         env.CLUSTER_NAME = ENV_CONFIG[params.ENVIRONMENT].CLUSTER_NAME
         sh '''
-            echo "Declaring Execution Role ARN for ${params.ENVIRONMENT} environment"
+            echo "Declaring Execution Role ARN for ${ENVIRONMENT} environment"
             export EXECUTION_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/ecs-task-execution-role"
 
-            echo "Declaring Image URI for ${params.ENVIRONMENT} environment"
+            echo "Declaring Image URI for ${ENVIRONMENT} environment"
             export IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
 
             echo "Substituting the values in the task definition"
