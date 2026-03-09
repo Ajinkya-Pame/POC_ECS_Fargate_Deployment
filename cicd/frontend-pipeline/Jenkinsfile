@@ -1,57 +1,10 @@
 
-// ========== Functions ==========
-def setup() {
-    env.AWS_ACCOUNT_ID = sh(script: "aws sts get-caller-identity --query Account --output text", returnStdout: true).trim()
-    env.ECR_REPOSITORY = "dev-frontend-memecricket"
-}
-
-def buildAndPush() {
-    sh 'aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY'
-    sh 'docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .'
-    sh 'docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'
-}
-
-def pullTagAndPush(envName){
-    sh 'docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'
-    sh 'docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/${envName}-frontend-memecricket:$IMAGE_TAG'
-    sh 'docker push $ECR_REGISTRY/${envName}-frontend-memecricket:$IMAGE_TAG'
-}
-
-def trivyScan(envName) {
-    sh 'trivy image --exit-code 0 --severity HIGH,CRITICAL $ECR_REGISTRY/${envName}-frontend-memecricket:$IMAGE_TAG'
-}
-
-def deployToECS(envName) {
-    // def ENV_CONFIG = [
-    //     dev:     [ CLUSTER_NAME: 'memecricket-dev-cluster' ],
-    //     staging: [ CLUSTER_NAME: 'memecricket-staging-cluster' ],
-    //     prod:    [ CLUSTER_NAME: 'memecricket-prod-cluster' ]
-    // ]
-    env.CLUSTER_NAME = 'memecricket-${envName}-cluster'
-    sh '''
-        export EXECUTION_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/ecs-task-execution-role"
-        export IMAGE_URI="${ECR_REGISTRY}/${envName}-frontend-memecricket:${IMAGE_TAG}"
-        export BACKEND_URL="backend.${envName}.cricket.local:3001"
-
-        envsubst < container-app/ecs/frontend-task-def.json > frontend-task-def-ready.json
-
-        aws ecs register-task-definition --cli-input-json file://frontend-task-def-ready.json --region ${AWS_DEFAULT_REGION}
-        aws ecs update-service --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --task-definition ${TASK_FAMILY} --force-new-deployment --region ${AWS_DEFAULT_REGION}
-    '''
-}
-
-def cleanup() {
-    sh 'docker logout $ECR_REGISTRY || true'
-    sh 'docker system prune -f --filter "label!=keep" || true'
-    cleanWs()
-}
-
 // ========== Pipeline ==========
 pipeline {
     agent any
-    // parameters {
-    //     choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Target deployment environment')
-    // }
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['dev', 'qa', 'prod'], description: 'Target deployment environment')
+    }
     environment {
         AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
@@ -67,46 +20,81 @@ pipeline {
                 script { setup() }
             }
         }
-        stage('Build & Push to DEV') {
+        stage('Build in DEV') {
+            when {
+                expression { params.ENVIRONMENT == 'dev' }
+            }
             steps {
                 dir('src/frontend') {
-                    script { buildAndPush() }
+                    script { build() }
                 }
             }
         }
-        stage('Security Scan DEV') {
+
+        stage('Security Scan') {
+            when {
+                expression { params.ENVIRONMENT == 'dev' }
+            }
             steps {
-                script { trivyScan("dev") }
+                script { trivyScan() }
             }
         }
-        stage('Deploy to ECS DEV') {
+
+        stage('Push to DEV ECR'){
+            when {
+                expression { params.ENVIRONMENT == 'dev' }
+            }
             steps {
-                script { deployToECS("dev") }
+                script { push() }
+            }
+        }
+        
+        stage('Deploy to ECS DEV') {
+            when {
+                expression { params.ENVIRONMENT == 'dev' }
+            }
+            steps {
+                script { deployToECS() }
             }
         }
         stage('pull and push image to QA'){
+            when {
+                expression { params.ENVIRONMENT == 'qa' }
+            }
             steps {
-                script { pullTagAndPush("qa") }
+                script { pullTagAndPush() }
             }
         }
         stage('DEploy to ECS in QA'){
+            when {
+                expression { params.ENVIRONMENT == 'qa' }
+            }
             steps {
-                script { deployToECS("qa") }
+                script { deployToECS() }
             }
         }
         stage('Approve Prod Deployment') {
+            when {
+                expression { params.ENVIRONMENT == 'prod' }
+            }
             steps {
-                input message: "Deploy ${IMAGE_TAG} to PRODUCTION?", ok: 'Deploy'
+                input message: "Push image and deploy application to ECS in PROD?", ok: 'Deploy'
             }
         }
         stage('pull and push image to PROD'){
+            when {
+                expression { params.ENVIRONMENT == 'prod' }
+            }
             steps {
-                script { pullTagAndPush("prod") }
+                script { pullTagAndPush() }
             }
         }
-        stage('DEploy to ECS in QA'){
+        stage('Deploy to ECS in PROD'){
+            when {
+                expression { params.ENVIRONMENT == 'prod' }
+            }
             steps {
-                script { deployToECS("prod") }
+                script { deployToECS() }
             }
         }
     }
@@ -119,3 +107,70 @@ pipeline {
         failure { echo "❌ ${params.ENVIRONMENT} Pipeline failed. Please check the logs." }
     }
 }
+
+// ========== Functions ==========
+def setup() {
+    env.AWS_ACCOUNT_ID = sh(script: "aws sts get-caller-identity --query Account --output text", returnStdout: true).trim()
+    env.ECR_REPOSITORY = "${params.ENVIRONMENT}-frontend-memecricket"
+    env.ENVIRONMENT = params.ENVIRONMENT
+    sh 'aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY'
+}
+
+def build() {
+    sh 'docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .'
+}
+
+def trivyScan() {
+    sh 'trivy image --exit-code 0 --severity HIGH,CRITICAL $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'
+}
+
+def push(){
+    sh 'docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'
+}
+
+def pullTagAndPush(){
+
+    def sourceRepo = ""
+    def targetRepo = "${params.ENVIRONMENT}-frontend-memecricket"
+
+    if(params.ENVIRONMENT == "qa"){
+        sourceRepo = "dev-frontend-memecricket"
+    }
+
+    if(params.ENVIRONMENT == "prod"){
+        sourceRepo = "qa-frontend-memecricket"
+    }
+
+    sh """
+    docker pull $ECR_REGISTRY/${sourceRepo}:$IMAGE_TAG
+    docker tag $ECR_REGISTRY/${sourceRepo}:$IMAGE_TAG $ECR_REGISTRY/${targetRepo}:$IMAGE_TAG
+    docker push $ECR_REGISTRY/${targetRepo}:$IMAGE_TAG
+    """
+}
+
+def deployToECS() {
+    def ENV_CONFIG = [
+        dev:     [ CLUSTER_NAME: 'memecricket-dev-cluster' ],
+        qa:      [ CLUSTER_NAME: 'memecricket-qa-cluster' ],
+        prod:    [ CLUSTER_NAME: 'memecricket-prod-cluster' ]
+    ]
+     env.CLUSTER_NAME = ENV_CONFIG[params.ENVIRONMENT].CLUSTER_NAME
+    sh '''
+        export EXECUTION_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/ecs-task-execution-role"
+        export IMAGE_URI="${ECR_REGISTRY}/$ECR_REPOSITORY:${IMAGE_TAG}"
+        export BACKEND_URL="backend.${ENVIRONMENT}.cricket.local:3001"
+
+        envsubst < container-app/ecs/frontend-task-def.json > frontend-task-def-ready.json
+
+        aws ecs register-task-definition --cli-input-json file://frontend-task-def-ready.json --region ${AWS_DEFAULT_REGION}
+        aws ecs update-service --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --task-definition ${TASK_FAMILY} --force-new-deployment --region ${AWS_DEFAULT_REGION}
+    '''
+}
+
+def cleanup() {
+    sh 'docker logout $ECR_REGISTRY || true'
+    sh 'docker system prune -f --filter "label!=keep" || true'
+    cleanWs()
+}
+
+
