@@ -1,5 +1,5 @@
 # ========== Environment ==========
-environment = "staging"
+environment = "qa"
 project     = "memecricket"
 owner       = "MemeCricket Company"
 cost_center = "CloudEthiX-POC"
@@ -37,7 +37,7 @@ zero_port      = 0
 
 # ========== ECS Cluster ==========
 services          = ["frontend", "backend", "db", "cache"]
-CLUSTER_NAME      = "memecricket-staging-cluster"
+CLUSTER_NAME      = "memecricket-qa-cluster"
 desired_count     = 1
 cpu               = "256"
 memory            = "512"
@@ -62,7 +62,7 @@ enc_type         = "KMS"
 force_delete_ecr = true
 
 # ========== Cloud Map ==========
-namespace       = "staging.cricket.local"
+namespace       = "qa.cricket.local"
 ttl             = 60
 dns_description = "Private namespace for ECS microservices"
 routing_policy  = "MULTIVALUE"

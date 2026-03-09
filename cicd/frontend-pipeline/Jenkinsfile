@@ -2,7 +2,7 @@
 // ========== Functions ==========
 def setup() {
     env.AWS_ACCOUNT_ID = sh(script: "aws sts get-caller-identity --query Account --output text", returnStdout: true).trim()
-    env.ECR_REPOSITORY = "${params.ENVIRONMENT}-frontend-memecricket"
+    env.ECR_REPOSITORY = "dev-frontend-memecricket"
 }
 
 def buildAndPush() {
@@ -11,21 +11,27 @@ def buildAndPush() {
     sh 'docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'
 }
 
-def trivyScan() {
-    sh 'trivy image --exit-code 0 --severity HIGH,CRITICAL $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'
+def pullTagAndPush(envName){
+    sh 'docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'
+    sh 'docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/${envName}-frontend-memecricket:$IMAGE_TAG'
+    sh 'docker push $ECR_REGISTRY/${envName}-frontend-memecricket:$IMAGE_TAG'
 }
 
-def deployToECS() {
-    def ENV_CONFIG = [
-        dev:     [ CLUSTER_NAME: 'memecricket-dev-cluster' ],
-        staging: [ CLUSTER_NAME: 'memecricket-staging-cluster' ],
-        prod:    [ CLUSTER_NAME: 'memecricket-prod-cluster' ]
-    ]
-    env.CLUSTER_NAME = ENV_CONFIG[params.ENVIRONMENT].CLUSTER_NAME
+def trivyScan(envName) {
+    sh 'trivy image --exit-code 0 --severity HIGH,CRITICAL $ECR_REGISTRY/${envName}-frontend-memecricket:$IMAGE_TAG'
+}
+
+def deployToECS(envName) {
+    // def ENV_CONFIG = [
+    //     dev:     [ CLUSTER_NAME: 'memecricket-dev-cluster' ],
+    //     staging: [ CLUSTER_NAME: 'memecricket-staging-cluster' ],
+    //     prod:    [ CLUSTER_NAME: 'memecricket-prod-cluster' ]
+    // ]
+    env.CLUSTER_NAME = 'memecricket-${envName}-cluster'
     sh '''
         export EXECUTION_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/ecs-task-execution-role"
-        export IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
-        export BACKEND_URL="backend.${ENVIRONMENT}.cricket.local:3001"
+        export IMAGE_URI="${ECR_REGISTRY}/${envName}-frontend-memecricket:${IMAGE_TAG}"
+        export BACKEND_URL="backend.${envName}.cricket.local:3001"
 
         envsubst < container-app/ecs/frontend-task-def.json > frontend-task-def-ready.json
 
@@ -43,9 +49,9 @@ def cleanup() {
 // ========== Pipeline ==========
 pipeline {
     agent any
-    parameters {
-        choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Target deployment environment')
-    }
+    // parameters {
+    //     choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Target deployment environment')
+    // }
     environment {
         AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
@@ -61,29 +67,46 @@ pipeline {
                 script { setup() }
             }
         }
-        stage('Build & Push') {
+        stage('Build & Push to DEV') {
             steps {
                 dir('src/frontend') {
                     script { buildAndPush() }
                 }
             }
         }
-        stage('Security Scan') {
+        stage('Security Scan DEV') {
             steps {
-                script { trivyScan() }
+                script { trivyScan("dev") }
+            }
+        }
+        stage('Deploy to ECS DEV') {
+            steps {
+                script { deployToECS("dev") }
+            }
+        }
+        stage('pull and push image to QA'){
+            steps {
+                script { pullTagAndPush("qa") }
+            }
+        }
+        stage('DEploy to ECS in QA'){
+            steps {
+                script { deployToECS("qa") }
             }
         }
         stage('Approve Prod Deployment') {
-            when {
-                expression { params.ENVIRONMENT == 'prod' }
-            }
             steps {
                 input message: "Deploy ${IMAGE_TAG} to PRODUCTION?", ok: 'Deploy'
             }
         }
-        stage('Deploy to ECS') {
+        stage('pull and push image to PROD'){
             steps {
-                script { deployToECS() }
+                script { pullTagAndPush("prod") }
+            }
+        }
+        stage('DEploy to ECS in QA'){
+            steps {
+                script { deployToECS("prod") }
             }
         }
     }
