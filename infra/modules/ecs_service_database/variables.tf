@@ -6,11 +6,6 @@ variable "SERVICE_NAME" {
   type = string
 }
 
-variable "SERVICE_NAME" {
-  type = string
-}
-
-
 variable "IMAGE_URL" {
   type = string
 }

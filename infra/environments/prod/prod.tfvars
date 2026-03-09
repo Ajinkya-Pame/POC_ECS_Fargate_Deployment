@@ -36,7 +36,12 @@ https_port     = 443
 zero_port      = 0
 
 # ========== ECS Cluster ==========
-services          = ["frontend", "backend", "db", "cache"]
+services          = {
+  frontend = "frontend"
+  backend  = "backend"
+  db       = "db"
+  cache    = "cache"
+}
 CLUSTER_NAME      = "memecricket-prod-cluster"
 desired_count     = 2
 cpu               = "512"

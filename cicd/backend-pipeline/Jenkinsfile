@@ -155,34 +155,40 @@ def pullTagAndPush(){
 
 def deployToECS() {
     echo("Deploying the Docker image to ECS")
-    def ENV_CONFIG = [
-        dev:     [ CLUSTER_NAME: 'memecricket-dev-cluster' ],
-        qa:      [ CLUSTER_NAME: 'memecricket-qa-cluster' ],
-        prod:    [ CLUSTER_NAME: 'memecricket-prod-cluster' ]
-    ]
+    withCredentials([
+        string(credentialsId: "${params.ENVIRONMENT}_DATABASE_URL", variable: 'DATABASE_URL'),
+        string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'REDIS_URL'),
+        string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'ADMIN_PASSWORD')
+    ]){
+        def ENV_CONFIG = [
+            dev:     [ CLUSTER_NAME: 'memecricket-dev-cluster' ],
+            qa:      [ CLUSTER_NAME: 'memecricket-qa-cluster' ],
+            prod:    [ CLUSTER_NAME: 'memecricket-prod-cluster' ]
+        ]
 
-    echo("Declaring Cluster Name for ${params.ENVIRONMENT} environment")
-    env.CLUSTER_NAME = ENV_CONFIG[params.ENVIRONMENT].CLUSTER_NAME
-    
-    sh '''
-        echo("Declaring Execution Role ARN for ${params.ENVIRONMENT} environment")
-        export EXECUTION_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/ecs-task-execution-role"
+        echo("Declaring Cluster Name for ${params.ENVIRONMENT} environment")
+        env.CLUSTER_NAME = ENV_CONFIG[params.ENVIRONMENT].CLUSTER_NAME
+        
+        sh '''
+            echo("Declaring Execution Role ARN for ${params.ENVIRONMENT} environment")
+            export EXECUTION_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/ecs-task-execution-role"
 
-        echo("Declaring Image URI for ${params.ENVIRONMENT} environment")
-        export IMAGE_URI="${ECR_REGISTRY}/$ECR_REPOSITORY:${IMAGE_TAG}"
+            echo("Declaring Image URI for ${params.ENVIRONMENT} environment")
+            export IMAGE_URI="${ECR_REGISTRY}/$ECR_REPOSITORY:${IMAGE_TAG}"
 
-        echo("Declaring Backend URL for ${params.ENVIRONMENT} environment")
-        export BACKEND_URL="backend.${ENVIRONMENT}.cricket.local:3001"
+            echo("Declaring Backend URL for ${params.ENVIRONMENT} environment")
+            export BACKEND_URL="backend.${ENVIRONMENT}.cricket.local:3001"
 
-        echo("Substituting the values in the task definition")
-        envsubst < container-app/ecs/backend-task-def.json > backend-task-def-ready.json
+            echo("Substituting the values in the task definition")
+            envsubst < container-app/ecs/backend-task-def.json > backend-task-def-ready.json
 
-        echo("Registering the task definition")
-        aws ecs register-task-definition --cli-input-json file://backend-task-def-ready.json --region ${AWS_DEFAULT_REGION} > /dev/null
+            echo("Registering the task definition")
+            aws ecs register-task-definition --cli-input-json file://backend-task-def-ready.json --region ${AWS_DEFAULT_REGION} > /dev/null
 
-        echo("Updating the service")
-        aws ecs update-service --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --task-definition ${TASK_FAMILY} --force-new-deployment --region ${AWS_DEFAULT_REGION}
-    '''
+            echo("Updating the service")
+            aws ecs update-service --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --task-definition ${TASK_FAMILY} --force-new-deployment --region ${AWS_DEFAULT_REGION}
+        '''
+    }
 }
 
 def cleanup() {

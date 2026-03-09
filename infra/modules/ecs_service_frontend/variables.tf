@@ -85,7 +85,3 @@ variable "CONTAINER" {
 variable "TASK" {
   type = string
 }
-
-variable "SERVICE_NAME" {
-  type = string
-}

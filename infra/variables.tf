@@ -209,7 +209,7 @@ variable "alb_name" {
 # ========== Global Tag Variables ==========
 variable "environment" {
   type        = string
-  description = "Deployment environment (dev, staging, prod)"
+  description = "Deployment environment (dev, qa, prod)"
 }
 
 variable "project" {
