@@ -198,13 +198,13 @@ def deployToECS() {
     echo("Declaring Cluster Name for ${params.ENVIRONMENT} environment")
     env.CLUSTER_NAME = ENV_CONFIG[params.ENVIRONMENT].CLUSTER_NAME
     sh '''
-        echo "Declaring Execution Role ARN for ${params.ENVIRONMENT} environment"
+        echo "Declaring Execution Role ARN for ${ENVIRONMENT} environment"
         export EXECUTION_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/ecs-task-execution-role"
 
-        echo "Declaring Image URI for ${params.ENVIRONMENT} environment"
+        echo "Declaring Image URI for ${ENVIRONMENT} environment"
         export IMAGE_URI="${ECR_REGISTRY}/$ECR_REPOSITORY:${IMAGE_TAG}"
 
-        echo "Declaring Backend URL for ${params.ENVIRONMENT} environment"
+        echo "Declaring Backend URL for ${ENVIRONMENT} environment"
         export BACKEND_URL="backend.${ENVIRONMENT}.cricket.local:3001"
 
         echo "Substituting the values in the task definition"
