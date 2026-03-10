@@ -28,8 +28,7 @@ pipeline {
 
         stage('Approve Resource Destruction') {
             steps {
-                // Added a more alarming message to prevent accidental clicks
-                input message: "DANGER: Are you sure you want to DESTROY the ${params.ENVIRONMENT} infrastructure?", ok: 'Destroy Everything'
+                input message: "Are you sure you want to DESTROY the ${params.ENVIRONMENT} infrastructure?", ok: 'Destroy Everything'
             }
         }
         
