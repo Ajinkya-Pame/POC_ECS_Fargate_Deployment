@@ -338,10 +338,6 @@ variable "subnet_count" {
   type = number
 }
 
-variable "false_state" {
-  type = bool
-}
-
 variable "scan_on_push" {
   type = bool
 }
