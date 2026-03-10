@@ -87,6 +87,8 @@ hc_interval        = 30
 hc_timeout         = 5
 threshold          = 2
 hc_path            = "/"
+https_protocol     = "HTTPS"
+policy_type        = "ELBSecurityPolicy-2016-08"
 
 # ========== Database (Non-Sensitive) ==========
 POSTGRES_DB   = "cricket_db"

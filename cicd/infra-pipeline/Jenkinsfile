@@ -90,6 +90,7 @@ def terraformPlan() {
         string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'TF_VAR_REDIS_URL'),
         string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'TF_VAR_ADMIN_PASSWORD'),
         string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD')
+        string(credentialsId: "${params.ENVIRONMENT}_CERT_ARN", variable: 'TF_VAR_CERT_ARN')
     ]) {
         sh "terraform plan -var-file=environments/${params.ENVIRONMENT}/${params.ENVIRONMENT}.tfvars -out=tfplan"
     }
@@ -102,6 +103,7 @@ def terraformApply() {
         string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'TF_VAR_REDIS_URL'),
         string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'TF_VAR_ADMIN_PASSWORD'),
         string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD')
+        string(credentialsId: "${params.ENVIRONMENT}_CERT_ARN", variable: 'TF_VAR_CERT_ARN')
     ]) {
         sh 'terraform apply -auto-approve tfplan'
     }

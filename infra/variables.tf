@@ -298,21 +298,29 @@ variable "all_protocol" {
 }
 
 variable "frontend_count" {
-  type    = number
-  default = 1
+  type = number
 }
 
 variable "backend_count" {
-  type    = number
-  default = 1
+  type = number
 }
 
 variable "db_count" {
-  type    = number
-  default = 1
+  type = number
 }
 
 variable "cache_count" {
-  type    = number
-  default = 1
+  type = number
+}
+
+variable "https_protocol" {
+  type = string
+}
+
+variable "policy_type" {
+  type = string
+}
+
+variable "cert_arn" {
+  type = string
 }

@@ -55,3 +55,19 @@ variable "HC_PATH" {
 variable "ENVIRONMENT" {
   type = string
 }
+
+variable "HTTPS_PROTOCOL" {
+  type = string
+}
+
+variable "HTTPS_PORT" {
+  type = string
+}
+
+variable "POLICY_TYPE" {
+  type = string
+}
+
+variable "CERT_ARN" {
+  type = string
+}

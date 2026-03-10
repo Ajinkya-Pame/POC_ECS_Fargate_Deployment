@@ -41,3 +41,18 @@ resource "aws_lb_listener" "http" {
     target_group_arn = aws_lb_target_group.ecs_tg.arn
   }
 }
+
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.main_alb.arn
+  port              = var.HTTPS_PORT
+  protocol          = var.HTTPS_PROTOCOL
+  ssl_policy        = var.POLICY_TYPE
+
+  # Paste the ARN you copied from the ACM console here
+  certificate_arn = var.CERT_ARN
+
+  default_action {
+    type             = var.ALB_DEFAULT_ACTION
+    target_group_arn = aws_lb_target_group.ecs_tg.arn
+  }
+}
