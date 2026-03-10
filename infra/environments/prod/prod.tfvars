@@ -43,7 +43,10 @@ services          = {
   cache    = "cache"
 }
 CLUSTER_NAME      = "memecricket-prod-cluster"
-desired_count     = 2
+frontend_count    = 2
+backend_count     = 2
+db_count          = 1
+cache_count       = 1
 cpu               = "512"
 memory            = "1024"
 db_cpu            = "1024"

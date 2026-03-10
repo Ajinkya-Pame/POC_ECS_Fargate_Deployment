@@ -296,3 +296,23 @@ variable "force_delete_ecr" {
 variable "all_protocol" {
   type = string
 }
+
+variable "frontend_count" {
+  type    = number
+  default = 1
+}
+
+variable "backend_count" {
+  type    = number
+  default = 1
+}
+
+variable "db_count" {
+  type    = number
+  default = 1
+}
+
+variable "cache_count" {
+  type    = number
+  default = 1
+}

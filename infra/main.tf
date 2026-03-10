@@ -105,7 +105,7 @@ module "ecs_service_frontend" {
   EXECUTION_ROLE_ARN             = module.iam.task_execution_role_arn
   NETWORK_MODE                   = var.network_mode
   RETENTION_DAYS                 = var.retention_days
-  DESIRED_COUNT                  = var.desired_count
+  DESIRED_COUNT                  = var.frontend_count
   ECS_PREFIX                     = var.ecs_prefix
   REQ_COMPATIBILITY              = var.req_compatibility
   TCP_PROTOCOL                   = var.tcp_protocol
@@ -133,7 +133,7 @@ module "ecs_service_backend" {
   DATABASE_URL                  = var.DATABASE_URL
   REDIS_URL                     = var.REDIS_URL
   ADMIN_PASSWORD                = var.ADMIN_PASSWORD
-  DESIRED_COUNT                 = var.desired_count
+  DESIRED_COUNT                 = var.backend_count
   ECS_PREFIX                    = var.ecs_prefix
   REQ_COMPATIBILITY             = var.req_compatibility
   TCP_PROTOCOL                  = var.tcp_protocol
@@ -161,7 +161,7 @@ module "ecs_service_database" {
   DB_CPU                         = var.db_cpu
   DB_MEMORY                      = var.db_memory
   DB_PORT                        = var.db_port
-  DESIRED_COUNT                  = var.desired_count
+  DESIRED_COUNT                  = var.db_count
   ECS_PREFIX                     = var.ecs_prefix
   REQ_COMPATIBILITY              = var.req_compatibility
   TCP_PROTOCOL                   = var.tcp_protocol
@@ -186,7 +186,7 @@ module "ecs_service_cache" {
   EXECUTION_ROLE_ARN          = module.iam.task_execution_role_arn
   NETWORK_MODE                = var.network_mode
   RETENTION_DAYS              = var.retention_days
-  DESIRED_COUNT               = var.desired_count
+  DESIRED_COUNT               = var.cache_count
   ECS_PREFIX                  = var.ecs_prefix
   REQ_COMPATIBILITY           = var.req_compatibility
   TCP_PROTOCOL                = var.tcp_protocol
