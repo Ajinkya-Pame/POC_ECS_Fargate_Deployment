@@ -12,7 +12,7 @@ pipeline {
         AWS_DEFAULT_REGION    = 'ap-south-1'
         SERVICE_NAME          = 'frontend-service'
         TASK_FAMILY           = 'frontend-task'
-        IMAGE_TAG             = "${env.GIT_COMMIT.take(8)}"
+        IMAGE_TAG             = "frontend-${env.GIT_COMMIT.take(8)}"
     }
     stages {
         stage('Setup') {

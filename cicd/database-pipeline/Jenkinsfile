@@ -11,7 +11,7 @@ pipeline {
         AWS_DEFAULT_REGION    = 'ap-south-1'
         SERVICE_NAME          = 'db-service'
         TASK_FAMILY           = 'db-task'
-        IMAGE_TAG             = "${env.GIT_COMMIT.take(8)}"
+        IMAGE_TAG             = "db-${env.GIT_COMMIT.take(8)}"
         POSTGRES_DB           = 'cricket_db'
         POSTGRES_USER         = 'cricket'
     }
