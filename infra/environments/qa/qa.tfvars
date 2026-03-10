@@ -5,11 +5,11 @@ owner       = "MemeCricket Company"
 cost_center = "CloudEthiX-POC"
 
 # ========== Networking ==========
-cidr_block  = "10.1.0.0/16"
-azs         = ["ap-south-1a", "ap-south-1b"]
-global_cidr = "0.0.0.0/0"
-region      = "ap-south-1"
-
+cidr_block   = "10.1.0.0/16"
+azs          = ["ap-south-1a", "ap-south-1b", "ap-south-1c"]
+global_cidr  = "0.0.0.0/0"
+region       = "ap-south-1"
+subnet_count = 3
 # ========== Resource Name Tags ==========
 vpc_name            = "custom-vpc"
 igw_name            = "custom-igw"

@@ -12,6 +12,7 @@ module "network" {
   PRIVATE_RT_NAME     = var.private_rt_name
   NAT_EIP_NAME        = var.nat_eip_name
   NAT_GW_NAME         = var.nat_gw_name
+  subnet_count        = var.subnet_count
 }
 
 module "security" {

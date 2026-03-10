@@ -21,7 +21,7 @@ resource "aws_internet_gateway" "custom_igw" {
 # public subnet
 resource "aws_subnet" "publicsubnet" {
   vpc_id            = aws_vpc.custom_vpc.id
-  count             = 2
+  count             = var.subnet_count
   cidr_block        = cidrsubnet(aws_vpc.custom_vpc.cidr_block, 8, count.index)
   availability_zone = var.AZS[count.index]
   tags = {
@@ -32,8 +32,8 @@ resource "aws_subnet" "publicsubnet" {
 # private subnet
 resource "aws_subnet" "privatesubnet" {
   vpc_id            = aws_vpc.custom_vpc.id
-  count             = 2
-  cidr_block        = cidrsubnet(aws_vpc.custom_vpc.cidr_block, 8, count.index + 2)
+  count             = var.subnet_count
+  cidr_block        = cidrsubnet(aws_vpc.custom_vpc.cidr_block, 8, count.index + var.subnet_count)
   availability_zone = var.AZS[count.index]
   tags = {
     Name = "${var.ENVIRONMENT}-${var.PRIVATE_SUBNET_NAME}-${count.index}"
@@ -74,14 +74,14 @@ resource "aws_main_route_table_association" "main-rt-asso" {
 
 # public subnet association
 resource "aws_route_table_association" "publicsubnet_association" {
-  count          = 2
+  count          = var.subnet_count
   subnet_id      = aws_subnet.publicsubnet[count.index].id
   route_table_id = aws_route_table.public-rt.id
 }
 
 # private subnet association
 resource "aws_route_table_association" "privatesubnet_association" {
-  count          = 2
+  count          = var.subnet_count
   subnet_id      = aws_subnet.privatesubnet[count.index].id
   route_table_id = aws_route_table.private-rt.id
 }

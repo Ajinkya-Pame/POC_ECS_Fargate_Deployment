@@ -333,3 +333,7 @@ variable "perm_status_code" {
 variable "redirect" {
   type = string
 }
+
+variable "subnet_count" {
+  type = number
+}

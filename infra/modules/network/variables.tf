@@ -44,3 +44,7 @@ variable "NAT_EIP_NAME" {
 variable "NAT_GW_NAME" {
   type = string
 }
+
+variable "subnet_count" {
+  type = number
+}

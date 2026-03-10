@@ -1,5 +1,5 @@
 cidr_block     = "10.0.0.0/16"
-azs            = ["ap-south-1a", "ap-south-1b"]
+azs            = ["ap-south-1a", "ap-south-1b", "ap-south-1c"]
 global_cidr    = "0.0.0.0/0"
 container_port = 80
 backend_port   = 3001
@@ -53,4 +53,5 @@ target_type        = "ip"
 hc_interval        = 30
 hc_timeout         = 5
 threshold          = 2
+subnet_count       = 3
 
