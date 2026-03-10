@@ -44,7 +44,7 @@ services = {
 }
 CLUSTER_NAME      = "memecricket-dev-cluster"
 frontend_count    = 2
-backend_count     = 2
+backend_count     = 1
 db_count          = 1
 cache_count       = 1
 cpu               = "256"
