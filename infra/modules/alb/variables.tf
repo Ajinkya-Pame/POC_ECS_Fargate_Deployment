@@ -71,3 +71,11 @@ variable "POLICY_TYPE" {
 variable "CERT_ARN" {
   type = string
 }
+
+variable "REDIRECT" {
+  type = string
+}
+
+variable "PERM_STATUS_CODE" {
+  type = string
+}

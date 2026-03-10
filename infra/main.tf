@@ -54,6 +54,8 @@ module "alb" {
   HTTPS_PORT         = var.https_port
   HTTPS_PROTOCOL     = var.https_protocol
   POLICY_TYPE        = var.policy_type
+  REDIRECT           = var.redirect
+  PERM_STATUS_CODE   = var.perm_status_code
 }
 
 module "iam" {

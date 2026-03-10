@@ -37,8 +37,12 @@ resource "aws_lb_listener" "http" {
   protocol          = var.HTTP_PROTOCOL
 
   default_action {
-    type             = var.ALB_DEFAULT_ACTION
-    target_group_arn = aws_lb_target_group.ecs_tg.arn
+    type = var.REDIRECT
+    redirect {
+      port        = var.HTTPS_PORT
+      protocol    = var.HTTPS_PROTOCOL
+      status_code = var.PERM_STATUS_CODE
+    }
   }
 }
 

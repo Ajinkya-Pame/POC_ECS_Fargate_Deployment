@@ -324,3 +324,11 @@ variable "policy_type" {
 variable "cert_arn" {
   type = string
 }
+
+variable "perm_status_code" {
+  type = string
+}
+
+variable "redirect" {
+  type = string
+}

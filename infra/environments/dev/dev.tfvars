@@ -89,6 +89,8 @@ threshold          = 2
 hc_path            = "/"
 https_protocol     = "HTTPS"
 policy_type        = "ELBSecurityPolicy-2016-08"
+redirect           = "redirect"
+perm_status_code   = "HTTP_301"
 
 # ========== Database (Non-Sensitive) ==========
 POSTGRES_DB   = "cricket_db"
