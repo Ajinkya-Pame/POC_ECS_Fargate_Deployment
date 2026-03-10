@@ -354,10 +354,6 @@ variable "delete_protection" {
   type = bool
 }
 
-variable "hc_grace_period" {
-  type = number
-}
-
 variable "essential_value" {
   type = bool
 }
@@ -380,22 +376,6 @@ variable "health_check_grace_period_seconds_db" {
 
 variable "health_check_grace_period_seconds_cache" {
   type = number
-}
-
-variable "ESSENTIAL_VALUE_FRONTEND" {
-  type = bool
-}
-
-variable "ESSENTIAL_VALUE_BACKEND" {
-  type = bool
-}
-
-variable "ESSENTIAL_VALUE_DB" {
-  type = bool
-}
-
-variable "ESSENTIAL_VALUE_CACHE" {
-  type = bool
 }
 
 variable "enable_dns_hostnames" {
