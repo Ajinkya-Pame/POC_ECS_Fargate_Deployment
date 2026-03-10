@@ -50,7 +50,7 @@ module "alb" {
   ALB_NAME           = var.alb_name
   HC_PATH            = var.hc_path
   ENVIRONMENT        = var.environment
-  CERT_ARN           = var.cert_arn
+  CERT_ARN           = var.CERT_ARN
   HTTPS_PORT         = var.https_port
   HTTPS_PROTOCOL     = var.https_protocol
   POLICY_TYPE        = var.policy_type

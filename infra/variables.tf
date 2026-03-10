@@ -321,8 +321,9 @@ variable "policy_type" {
   type = string
 }
 
-variable "cert_arn" {
-  type = string
+variable "CERT_ARN" {
+  type      = string
+  sensitive = true
 }
 
 variable "perm_status_code" {
