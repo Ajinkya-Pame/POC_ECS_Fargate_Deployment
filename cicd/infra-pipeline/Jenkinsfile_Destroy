@@ -64,7 +64,8 @@ def terraformPlanDestroy() {
         string(credentialsId: "${params.ENVIRONMENT}_DATABASE_URL", variable: 'TF_VAR_DATABASE_URL'),
         string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'TF_VAR_REDIS_URL'),
         string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'TF_VAR_ADMIN_PASSWORD'),
-        string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD')
+        string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD'),
+        string(credentialsId: "${params.ENVIRONMENT}_CERT_ARN", variable: 'TF_VAR_CERT_ARN')
     ]) {
         // Generates a destruction plan and saves it
         sh "terraform plan -destroy -var-file=environments/${params.ENVIRONMENT}/${params.ENVIRONMENT}.tfvars -out=tfplan-destroy"
@@ -77,7 +78,8 @@ def terraformDestroy() {
         string(credentialsId: "${params.ENVIRONMENT}_DATABASE_URL", variable: 'TF_VAR_DATABASE_URL'),
         string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'TF_VAR_REDIS_URL'),
         string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'TF_VAR_ADMIN_PASSWORD'),
-        string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD')
+        string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD'),
+        string(credentialsId: "${params.ENVIRONMENT}_CERT_ARN", variable: 'TF_VAR_CERT_ARN')
     ]) {
         // Applies the destruction plan
         sh 'terraform apply -auto-approve tfplan-destroy'
