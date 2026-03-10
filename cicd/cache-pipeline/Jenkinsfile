@@ -11,7 +11,7 @@ pipeline {
         AWS_DEFAULT_REGION    = 'ap-south-1'
         SERVICE_NAME          = 'cache-service'
         TASK_FAMILY           = 'cache-task'
-        IMAGE_TAG             = "v${BUILD_NUMBER}"
+        IMAGE_TAG             = "${env.GIT_COMMIT.take(8)}"
     }
     stages {
         stage('Setup') {
