@@ -1,12 +1,12 @@
 # The Application Load Balancer
 resource "aws_lb" "main_alb" {
   name               = var.ALB_NAME
-  internal           = false
+  internal           = var.INTERNAL_TYPE
   load_balancer_type = var.ALB_TYPE
   security_groups    = [var.alb_sg_id]
   subnets            = var.public_subnet_ids
 
-  enable_deletion_protection = false
+  enable_deletion_protection = var.DELETE_PROTECTION
 
   tags = { Name = "${var.ENVIRONMENT}-${var.ALB_NAME}" }
 }

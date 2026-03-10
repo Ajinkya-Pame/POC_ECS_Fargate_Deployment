@@ -21,3 +21,7 @@ variable "FORCE_DELETE" {
 variable "ENVIRONMENT" {
   type = string
 }
+
+variable "SCAN_ON_PUSH" {
+  type = bool
+}

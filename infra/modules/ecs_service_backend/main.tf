@@ -15,7 +15,7 @@ resource "aws_ecs_task_definition" "backend_task" {
     {
       name      = "${var.SERVICE_NAME}-${var.CONTAINER}"
       image     = var.IMAGE_URL
-      essential = true
+      essential = var.ESSENTIAL_VALUE
       portMappings = [
         {
           containerPort = var.BACKEND_PORT
@@ -51,10 +51,10 @@ resource "aws_ecs_service" "backend_service" {
   network_configuration {
     subnets          = var.PRIVATE_SUBNETS
     security_groups  = [var.BACKEND_SG_ID]
-    assign_public_ip = false
+    assign_public_ip = var.ASSIGN_PUBLIC_IP
   }
 
-  health_check_grace_period_seconds = 60
+  health_check_grace_period_seconds = var.HEALTH_CHECK_GRACE_PERIOD_SECONDS_BACKEND
 
   # This is the Cloud Map integration!
   service_registries {

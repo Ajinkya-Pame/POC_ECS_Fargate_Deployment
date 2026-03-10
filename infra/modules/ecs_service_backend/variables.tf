@@ -96,3 +96,15 @@ variable "TCP_PROTOCOL" {
 variable "SERVICE" {
   type = string
 }
+
+variable "HEALTH_CHECK_GRACE_PERIOD_SECONDS_BACKEND" {
+  type = number
+}
+
+variable "ESSENTIAL_VALUE" {
+  type = bool
+}
+
+variable "ASSIGN_PUBLIC_IP" {
+  type = bool
+}

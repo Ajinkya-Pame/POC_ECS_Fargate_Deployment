@@ -57,3 +57,7 @@ variable "CACHE_SG_NAME" {
 variable "ALL_PROTOCOL" {
   type = string
 }
+
+variable "TCP_PROTOCOL" {
+  type = string
+}

@@ -337,3 +337,71 @@ variable "redirect" {
 variable "subnet_count" {
   type = number
 }
+
+variable "false_state" {
+  type = bool
+}
+
+variable "scan_on_push" {
+  type = bool
+}
+
+variable "internal_type" {
+  type = bool
+}
+
+variable "delete_protection" {
+  type = bool
+}
+
+variable "hc_grace_period" {
+  type = number
+}
+
+variable "essential_value" {
+  type = bool
+}
+
+variable "assign_public_ip" {
+  type = bool
+}
+
+variable "health_check_grace_period_seconds_frontend" {
+  type = number
+}
+
+variable "health_check_grace_period_seconds_backend" {
+  type = number
+}
+
+variable "health_check_grace_period_seconds_db" {
+  type = number
+}
+
+variable "health_check_grace_period_seconds_cache" {
+  type = number
+}
+
+variable "ESSENTIAL_VALUE_FRONTEND" {
+  type = bool
+}
+
+variable "ESSENTIAL_VALUE_BACKEND" {
+  type = bool
+}
+
+variable "ESSENTIAL_VALUE_DB" {
+  type = bool
+}
+
+variable "ESSENTIAL_VALUE_CACHE" {
+  type = bool
+}
+
+variable "enable_dns_hostnames" {
+  type = bool
+}
+
+variable "enable_dns_support" {
+  type = bool
+}

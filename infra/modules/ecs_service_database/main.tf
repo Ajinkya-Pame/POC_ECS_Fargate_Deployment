@@ -15,7 +15,7 @@ resource "aws_ecs_task_definition" "database_task" {
     {
       name      = "${var.SERVICE_NAME}-${var.CONTAINER}"
       image     = var.IMAGE_URL
-      essential = true
+      essential = var.ESSENTIAL_VALUE
       portMappings = [
         {
           containerPort = var.DB_PORT
@@ -50,10 +50,10 @@ resource "aws_ecs_service" "database_service" {
   network_configuration {
     subnets          = var.PRIVATE_SUBNETS
     security_groups  = [var.DATABASE_SG_ID]
-    assign_public_ip = false
+    assign_public_ip = var.ASSIGN_PUBLIC_IP
   }
 
-  health_check_grace_period_seconds = 120
+  health_check_grace_period_seconds = var.HEALTH_CHECK_GRACE_PERIOD_SECONDS_DB
 
 
 

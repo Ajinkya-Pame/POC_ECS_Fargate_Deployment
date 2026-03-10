@@ -79,3 +79,11 @@ variable "REDIRECT" {
 variable "PERM_STATUS_CODE" {
   type = string
 }
+
+variable "INTERNAL_TYPE" {
+  type = bool
+}
+
+variable "DELETE_PROTECTION" {
+  type = bool
+}

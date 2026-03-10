@@ -5,11 +5,13 @@ owner       = "MemeCricket Company"
 cost_center = "CloudEthiX-POC"
 
 # ========== Networking ==========
-cidr_block   = "10.0.0.0/16"
-azs          = ["ap-south-1a", "ap-south-1b", "ap-south-1c"]
-global_cidr  = "0.0.0.0/0"
-region       = "ap-south-1"
-subnet_count = 3
+cidr_block           = "10.0.0.0/16"
+azs                  = ["ap-south-1a", "ap-south-1b", "ap-south-1c"]
+global_cidr          = "0.0.0.0/0"
+region               = "ap-south-1"
+subnet_count         = 3
+enable_dns_hostnames = true
+enable_dns_support   = true
 
 # ========== Resource Name Tags ==========
 vpc_name            = "custom-vpc"
@@ -43,32 +45,39 @@ services = {
   db       = "db"
   cache    = "cache"
 }
-CLUSTER_NAME      = "memecricket-dev-cluster"
-frontend_count    = 1
-backend_count     = 1
-db_count          = 1
-cache_count       = 1
-cpu               = "256"
-memory            = "512"
-db_cpu            = "512"
-db_memory         = "1024"
-network_mode      = "awsvpc"
-log_driver        = "awslogs"
-retention_days    = 7
-ecs_prefix        = "ecs"
-req_compatibility = "FARGATE"
-tcp_protocol      = "tcp"
-service           = "service"
-container         = "container"
-task              = "task"
-fargate_base      = 1
-fargate_weight    = 100
+CLUSTER_NAME                               = "memecricket-dev-cluster"
+frontend_count                             = 1
+backend_count                              = 1
+db_count                                   = 1
+cache_count                                = 1
+cpu                                        = "256"
+memory                                     = "512"
+db_cpu                                     = "512"
+db_memory                                  = "1024"
+network_mode                               = "awsvpc"
+log_driver                                 = "awslogs"
+retention_days                             = 7
+ecs_prefix                                 = "ecs"
+req_compatibility                          = "FARGATE"
+tcp_protocol                               = "tcp"
+service                                    = "service"
+container                                  = "container"
+task                                       = "task"
+fargate_base                               = 1
+fargate_weight                             = 100
+health_check_grace_period_seconds_frontend = 60
+health_check_grace_period_seconds_backend  = 60
+health_check_grace_period_seconds_db       = 60
+health_check_grace_period_seconds_cache    = 60
+assign_public_ip                           = false
+essential_value                            = true
 
 # ========== ECR ==========
 app_name         = "memecricket"
 mutability       = "MUTABLE"
 enc_type         = "KMS"
 force_delete_ecr = true
+scan_on_push     = true
 
 # ========== Cloud Map ==========
 namespace       = "dev.cricket.local"
@@ -92,6 +101,8 @@ https_protocol     = "HTTPS"
 policy_type        = "ELBSecurityPolicy-2016-08"
 redirect           = "redirect"
 perm_status_code   = "HTTP_301"
+internal_type      = false
+delete_protection  = false
 
 # ========== Database (Non-Sensitive) ==========
 POSTGRES_DB   = "cricket_db"

@@ -4,7 +4,7 @@ resource "aws_ecr_repository" "cricket" {
   image_tag_mutability = var.MUTABILITY
 
   image_scanning_configuration {
-    scan_on_push = true
+    scan_on_push = var.SCAN_ON_PUSH
   }
 
   encryption_configuration {

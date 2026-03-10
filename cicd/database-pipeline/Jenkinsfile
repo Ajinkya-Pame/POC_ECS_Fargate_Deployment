@@ -156,7 +156,7 @@ def deployToECS() {
     ]){
         def ENV_CONFIG = [
             dev:     [ CLUSTER_NAME: 'memecricket-dev-cluster' ],
-            qa: [ CLUSTER_NAME: 'memecricket-qa-cluster' ],
+            qa:      [ CLUSTER_NAME: 'memecricket-qa-cluster' ],
             prod:    [ CLUSTER_NAME: 'memecricket-prod-cluster' ]
         ]
 

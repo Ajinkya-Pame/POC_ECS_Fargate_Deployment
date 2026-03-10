@@ -81,3 +81,16 @@ variable "TCP_PROTOCOL" {
 variable "SERVICE" {
   type = string
 }
+
+variable "HEALTH_CHECK_GRACE_PERIOD_SECONDS_CACHE" {
+  type = number
+}
+
+variable "ASSIGN_PUBLIC_IP" {
+  type = bool
+}
+
+variable "ESSENTIAL_VALUE" {
+  type = bool
+}
+

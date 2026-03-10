@@ -1,18 +1,20 @@
 module "network" {
-  source              = "./modules/network"
-  CIDR_BLOCK          = var.cidr_block
-  AZS                 = var.azs
-  GLOBAL_CIDR         = var.global_cidr
-  ENVIRONMENT         = var.environment
-  VPC_NAME            = var.vpc_name
-  IGW_NAME            = var.igw_name
-  PUBLIC_SUBNET_NAME  = var.public_subnet_name
-  PRIVATE_SUBNET_NAME = var.private_subnet_name
-  PUBLIC_RT_NAME      = var.public_rt_name
-  PRIVATE_RT_NAME     = var.private_rt_name
-  NAT_EIP_NAME        = var.nat_eip_name
-  NAT_GW_NAME         = var.nat_gw_name
-  subnet_count        = var.subnet_count
+  source               = "./modules/network"
+  CIDR_BLOCK           = var.cidr_block
+  AZS                  = var.azs
+  GLOBAL_CIDR          = var.global_cidr
+  ENVIRONMENT          = var.environment
+  VPC_NAME             = var.vpc_name
+  IGW_NAME             = var.igw_name
+  PUBLIC_SUBNET_NAME   = var.public_subnet_name
+  PRIVATE_SUBNET_NAME  = var.private_subnet_name
+  PUBLIC_RT_NAME       = var.public_rt_name
+  PRIVATE_RT_NAME      = var.private_rt_name
+  NAT_EIP_NAME         = var.nat_eip_name
+  NAT_GW_NAME          = var.nat_gw_name
+  subnet_count         = var.subnet_count
+  ENABLE_DNS_HOSTNAMES = var.enable_dns_hostnames
+  ENABLE_DNS_SUPPORT   = var.enable_dns_support
 }
 
 module "security" {
@@ -32,6 +34,7 @@ module "security" {
   DB_SG_NAME       = var.db_sg_name
   CACHE_SG_NAME    = var.cache_sg_name
   ALL_PROTOCOL     = var.all_protocol
+  TCP_PROTOCOL     = var.tcp_protocol
 }
 
 module "alb" {
@@ -57,6 +60,8 @@ module "alb" {
   POLICY_TYPE        = var.policy_type
   REDIRECT           = var.redirect
   PERM_STATUS_CODE   = var.perm_status_code
+  INTERNAL_TYPE      = var.internal_type
+  DELETE_PROTECTION  = var.delete_protection
 }
 
 module "iam" {
@@ -86,6 +91,7 @@ module "ecr" {
   APP_NAME     = var.app_name
   FORCE_DELETE = var.force_delete_ecr
   ENVIRONMENT  = var.environment
+  SCAN_ON_PUSH = var.scan_on_push
 }
 
 module "ecs_cluster" {
@@ -97,109 +103,121 @@ module "ecs_cluster" {
 }
 
 module "ecs_service_frontend" {
-  source                         = "./modules/ecs_service_frontend"
-  CLUSTER_ID                     = module.ecs_cluster.cluster_id
-  IMAGE_URL                      = module.ecr.repository_urls["frontend"]
-  CONTAINER_PORT                 = var.container_port
-  PRIVATE_SUBNETS                = module.network.private_subnet_ids
-  FRONTEND_SG_ID                 = module.security.frontend_sg_id
-  TARGET_GROUP_ARN               = module.alb.target_group_arn
-  FRONTEND_SERVICE_DISCOVERY_ARN = module.cloud_map.service_discovery_arns["frontend"]
-  LOG_DRIVER                     = var.log_driver
-  REGION                         = var.region
-  CPU                            = var.cpu
-  MEMORY                         = var.memory
-  EXECUTION_ROLE_ARN             = module.iam.task_execution_role_arn
-  NETWORK_MODE                   = var.network_mode
-  RETENTION_DAYS                 = var.retention_days
-  DESIRED_COUNT                  = var.frontend_count
-  ECS_PREFIX                     = var.ecs_prefix
-  REQ_COMPATIBILITY              = var.req_compatibility
-  TCP_PROTOCOL                   = var.tcp_protocol
-  CONTAINER                      = var.container
-  SERVICE                        = var.service
-  TASK                           = var.task
-  SERVICE_NAME                   = var.services["frontend"]
+  source                                     = "./modules/ecs_service_frontend"
+  CLUSTER_ID                                 = module.ecs_cluster.cluster_id
+  IMAGE_URL                                  = module.ecr.repository_urls["frontend"]
+  CONTAINER_PORT                             = var.container_port
+  PRIVATE_SUBNETS                            = module.network.private_subnet_ids
+  FRONTEND_SG_ID                             = module.security.frontend_sg_id
+  TARGET_GROUP_ARN                           = module.alb.target_group_arn
+  FRONTEND_SERVICE_DISCOVERY_ARN             = module.cloud_map.service_discovery_arns["frontend"]
+  LOG_DRIVER                                 = var.log_driver
+  REGION                                     = var.region
+  CPU                                        = var.cpu
+  MEMORY                                     = var.memory
+  EXECUTION_ROLE_ARN                         = module.iam.task_execution_role_arn
+  NETWORK_MODE                               = var.network_mode
+  RETENTION_DAYS                             = var.retention_days
+  DESIRED_COUNT                              = var.frontend_count
+  ECS_PREFIX                                 = var.ecs_prefix
+  REQ_COMPATIBILITY                          = var.req_compatibility
+  TCP_PROTOCOL                               = var.tcp_protocol
+  CONTAINER                                  = var.container
+  SERVICE                                    = var.service
+  TASK                                       = var.task
+  SERVICE_NAME                               = var.services["frontend"]
+  ESSENTIAL_VALUE                            = var.essential_value
+  HEALTH_CHECK_GRACE_PERIOD_SECONDS_FRONTEND = var.health_check_grace_period_seconds_frontend
+  ASSIGN_PUBLIC_IP                           = var.assign_public_ip
 }
 
 module "ecs_service_backend" {
-  source                        = "./modules/ecs_service_backend"
-  CLUSTER_ID                    = module.ecs_cluster.cluster_id
-  IMAGE_URL                     = module.ecr.repository_urls["backend"]
-  BACKEND_PORT                  = var.backend_port
-  PRIVATE_SUBNETS               = module.network.private_subnet_ids
-  BACKEND_SG_ID                 = module.security.backend_sg_id
-  BACKEND_SERVICE_DISCOVERY_ARN = module.cloud_map.service_discovery_arns["backend"]
-  LOG_DRIVER                    = var.log_driver
-  REGION                        = var.region
-  CPU                           = var.cpu
-  MEMORY                        = var.memory
-  EXECUTION_ROLE_ARN            = module.iam.task_execution_role_arn
-  NETWORK_MODE                  = var.network_mode
-  RETENTION_DAYS                = var.retention_days
-  DATABASE_URL                  = var.DATABASE_URL
-  REDIS_URL                     = var.REDIS_URL
-  ADMIN_PASSWORD                = var.ADMIN_PASSWORD
-  DESIRED_COUNT                 = var.backend_count
-  ECS_PREFIX                    = var.ecs_prefix
-  REQ_COMPATIBILITY             = var.req_compatibility
-  TCP_PROTOCOL                  = var.tcp_protocol
-  CONTAINER                     = var.container
-  SERVICE                       = var.service
-  TASK                          = var.task
-  SERVICE_NAME                  = var.services["backend"]
+  source                                    = "./modules/ecs_service_backend"
+  CLUSTER_ID                                = module.ecs_cluster.cluster_id
+  IMAGE_URL                                 = module.ecr.repository_urls["backend"]
+  BACKEND_PORT                              = var.backend_port
+  PRIVATE_SUBNETS                           = module.network.private_subnet_ids
+  BACKEND_SG_ID                             = module.security.backend_sg_id
+  BACKEND_SERVICE_DISCOVERY_ARN             = module.cloud_map.service_discovery_arns["backend"]
+  LOG_DRIVER                                = var.log_driver
+  REGION                                    = var.region
+  CPU                                       = var.cpu
+  MEMORY                                    = var.memory
+  EXECUTION_ROLE_ARN                        = module.iam.task_execution_role_arn
+  NETWORK_MODE                              = var.network_mode
+  RETENTION_DAYS                            = var.retention_days
+  DATABASE_URL                              = var.DATABASE_URL
+  REDIS_URL                                 = var.REDIS_URL
+  ADMIN_PASSWORD                            = var.ADMIN_PASSWORD
+  DESIRED_COUNT                             = var.backend_count
+  ECS_PREFIX                                = var.ecs_prefix
+  REQ_COMPATIBILITY                         = var.req_compatibility
+  TCP_PROTOCOL                              = var.tcp_protocol
+  CONTAINER                                 = var.container
+  SERVICE                                   = var.service
+  TASK                                      = var.task
+  SERVICE_NAME                              = var.services["backend"]
+  ESSENTIAL_VALUE                           = var.essential_value
+  HEALTH_CHECK_GRACE_PERIOD_SECONDS_BACKEND = var.health_check_grace_period_seconds_backend
+  ASSIGN_PUBLIC_IP                          = var.assign_public_ip
 }
 
 module "ecs_service_database" {
-  source                         = "./modules/ecs_service_database"
-  CLUSTER_ID                     = module.ecs_cluster.cluster_id
-  IMAGE_URL                      = module.ecr.repository_urls["db"]
-  PRIVATE_SUBNETS                = module.network.private_subnet_ids
-  DATABASE_SG_ID                 = module.security.db_sg_id
-  DATABASE_SERVICE_DISCOVERY_ARN = module.cloud_map.service_discovery_arns["db"]
-  LOG_DRIVER                     = var.log_driver
-  REGION                         = var.region
-  EXECUTION_ROLE_ARN             = module.iam.task_execution_role_arn
-  NETWORK_MODE                   = var.network_mode
-  RETENTION_DAYS                 = var.retention_days
-  POSTGRES_DB                    = var.POSTGRES_DB
-  POSTGRES_USER                  = var.POSTGRES_USER
-  POSTGRES_PASSWORD              = var.POSTGRES_PASSWORD
-  DB_CPU                         = var.db_cpu
-  DB_MEMORY                      = var.db_memory
-  DB_PORT                        = var.db_port
-  DESIRED_COUNT                  = var.db_count
-  ECS_PREFIX                     = var.ecs_prefix
-  REQ_COMPATIBILITY              = var.req_compatibility
-  TCP_PROTOCOL                   = var.tcp_protocol
-  CONTAINER                      = var.container
-  SERVICE                        = var.service
-  TASK                           = var.task
-  SERVICE_NAME                   = var.services["db"]
+  source                               = "./modules/ecs_service_database"
+  CLUSTER_ID                           = module.ecs_cluster.cluster_id
+  IMAGE_URL                            = module.ecr.repository_urls["db"]
+  PRIVATE_SUBNETS                      = module.network.private_subnet_ids
+  DATABASE_SG_ID                       = module.security.db_sg_id
+  DATABASE_SERVICE_DISCOVERY_ARN       = module.cloud_map.service_discovery_arns["db"]
+  LOG_DRIVER                           = var.log_driver
+  REGION                               = var.region
+  EXECUTION_ROLE_ARN                   = module.iam.task_execution_role_arn
+  NETWORK_MODE                         = var.network_mode
+  RETENTION_DAYS                       = var.retention_days
+  POSTGRES_DB                          = var.POSTGRES_DB
+  POSTGRES_USER                        = var.POSTGRES_USER
+  POSTGRES_PASSWORD                    = var.POSTGRES_PASSWORD
+  DB_CPU                               = var.db_cpu
+  DB_MEMORY                            = var.db_memory
+  DB_PORT                              = var.db_port
+  DESIRED_COUNT                        = var.db_count
+  ECS_PREFIX                           = var.ecs_prefix
+  REQ_COMPATIBILITY                    = var.req_compatibility
+  TCP_PROTOCOL                         = var.tcp_protocol
+  CONTAINER                            = var.container
+  SERVICE                              = var.service
+  TASK                                 = var.task
+  SERVICE_NAME                         = var.services["db"]
+  ESSENTIAL_VALUE                      = var.essential_value
+  HEALTH_CHECK_GRACE_PERIOD_SECONDS_DB = var.health_check_grace_period_seconds_db
+  ASSIGN_PUBLIC_IP                     = var.assign_public_ip
 }
 
 module "ecs_service_cache" {
-  source                      = "./modules/ecs_service_cache"
-  CLUSTER_ID                  = module.ecs_cluster.cluster_id
-  IMAGE_URL                   = module.ecr.repository_urls["cache"]
-  CACHE_PORT                  = var.cache_port
-  PRIVATE_SUBNETS             = module.network.private_subnet_ids
-  CACHE_SG_ID                 = module.security.cache_sg_id
-  CACHE_SERVICE_DISCOVERY_ARN = module.cloud_map.service_discovery_arns["cache"]
-  LOG_DRIVER                  = var.log_driver
-  REGION                      = var.region
-  CPU                         = var.cpu
-  MEMORY                      = var.memory
-  EXECUTION_ROLE_ARN          = module.iam.task_execution_role_arn
-  NETWORK_MODE                = var.network_mode
-  RETENTION_DAYS              = var.retention_days
-  DESIRED_COUNT               = var.cache_count
-  ECS_PREFIX                  = var.ecs_prefix
-  REQ_COMPATIBILITY           = var.req_compatibility
-  TCP_PROTOCOL                = var.tcp_protocol
-  CONTAINER                   = var.container
-  SERVICE                     = var.service
-  TASK                        = var.task
-  SERVICE_NAME                = var.services["cache"]
+  source                                  = "./modules/ecs_service_cache"
+  CLUSTER_ID                              = module.ecs_cluster.cluster_id
+  IMAGE_URL                               = module.ecr.repository_urls["cache"]
+  CACHE_PORT                              = var.cache_port
+  PRIVATE_SUBNETS                         = module.network.private_subnet_ids
+  CACHE_SG_ID                             = module.security.cache_sg_id
+  CACHE_SERVICE_DISCOVERY_ARN             = module.cloud_map.service_discovery_arns["cache"]
+  LOG_DRIVER                              = var.log_driver
+  REGION                                  = var.region
+  CPU                                     = var.cpu
+  MEMORY                                  = var.memory
+  EXECUTION_ROLE_ARN                      = module.iam.task_execution_role_arn
+  NETWORK_MODE                            = var.network_mode
+  RETENTION_DAYS                          = var.retention_days
+  DESIRED_COUNT                           = var.cache_count
+  ECS_PREFIX                              = var.ecs_prefix
+  REQ_COMPATIBILITY                       = var.req_compatibility
+  TCP_PROTOCOL                            = var.tcp_protocol
+  CONTAINER                               = var.container
+  SERVICE                                 = var.service
+  TASK                                    = var.task
+  SERVICE_NAME                            = var.services["cache"]
+  HEALTH_CHECK_GRACE_PERIOD_SECONDS_CACHE = var.health_check_grace_period_seconds_cache
+  ASSIGN_PUBLIC_IP                        = var.assign_public_ip
+  ESSENTIAL_VALUE                         = var.essential_value
 }
 

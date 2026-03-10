@@ -48,3 +48,11 @@ variable "NAT_GW_NAME" {
 variable "subnet_count" {
   type = number
 }
+
+variable "ENABLE_DNS_HOSTNAMES" {
+  type = bool
+}
+
+variable "ENABLE_DNS_SUPPORT" {
+  type = bool
+}

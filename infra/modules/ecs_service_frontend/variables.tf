@@ -85,3 +85,15 @@ variable "CONTAINER" {
 variable "TASK" {
   type = string
 }
+
+variable "HEALTH_CHECK_GRACE_PERIOD_SECONDS_FRONTEND" {
+  type = number
+}
+
+variable "ASSIGN_PUBLIC_IP" {
+  type = bool
+}
+
+variable "ESSENTIAL_VALUE" {
+  type = bool
+}
