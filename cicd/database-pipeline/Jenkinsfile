@@ -27,14 +27,12 @@ pipeline {
             }
         }
         stage('Build') {
-            steps {
-                when { 
+            when { 
                 expression { params.ENVIRONMENT == 'dev' && params.IMAGE_TAG == '' } 
-                }
-                steps {
-                    dir('src/database') {
-                        script { build() }
-                    }
+            }
+            steps {
+                dir('src/database') {
+                    script { build() }
                 }
             }
         }
