@@ -3,6 +3,7 @@ pipeline {
     agent any
     parameters {
         choice(name: 'ENVIRONMENT', choices: ['dev', 'qa', 'prod'], description: 'Target deployment environment')
+        string(name: 'IMAGE_TAG', defaultValue: '', description: 'Override the container image tag for deployment/rollback. Leave empty to use latest commit.')
     }
     environment {
         AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
@@ -11,9 +12,13 @@ pipeline {
         AWS_DEFAULT_REGION    = 'ap-south-1'
         SERVICE_NAME          = 'db-service'
         TASK_FAMILY           = 'db-task'
-        IMAGE_TAG             = "db-${env.GIT_COMMIT.take(8)}"
+        //IMAGE_TAG             = "db-${env.GIT_COMMIT.take(8)}"
         POSTGRES_DB           = 'cricket_db'
         POSTGRES_USER         = 'cricket'
+
+        // Tag Logic
+        COMMIT_ID           = "${env.GIT_COMMIT ? env.GIT_COMMIT.take(8) : ''}"
+        RESOLVED_TAG        = "${params.IMAGE_TAG ?: env.COMPONENT_DIR + '-' + env.COMMIT_ID}"
     }
     stages {
         stage('Setup') {
@@ -24,16 +29,21 @@ pipeline {
         stage('Build') {
             steps {
                 dir('src/database') {
-                    script { build() }
+                    when { expression { params.ENVIRONMENT == 'dev' && params.IMAGE_TAG == '' } }
+                    steps {
+                        script { build() }
+                    }
                 }
             }
         }
         stage('Security Scan') {
+            when { expression { params.ENVIRONMENT == 'dev' && params.IMAGE_TAG == '' } }
             steps {
                 script { trivyScan() }
             }
         }
         stage('Push') {
+            when { expression { params.ENVIRONMENT == 'dev' && params.IMAGE_TAG == '' } }
             steps {
                 script { push() }
             }
@@ -93,7 +103,7 @@ pipeline {
             script { cleanup() }
             echo 'Pipeline execution complete. Workspace cleaned.'
         }
-        success { echo " ${params.ENVIRONMENT} Deployment successful! Image: ${IMAGE_TAG}" }
+        success { echo " ${params.ENVIRONMENT} Deployment successful! Image: ${env.RESOLVED_TAG}" }
         failure { echo " ${params.ENVIRONMENT} Pipeline failed. Please check the logs." }
     }
 }
@@ -117,7 +127,7 @@ def setup() {
 
 def build() {
     echo("Building the Docker image for ${params.ENVIRONMENT} environment")
-    sh 'docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .'
+    sh 'docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${env.RESOLVED_TAG} .'
 }
 
 def trivyScan() {
@@ -131,7 +141,7 @@ def trivyScan() {
       --severity HIGH,CRITICAL \
       --format json \
       -o trivy-report.json \
-      $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+      $ECR_REGISTRY/$ECR_REPOSITORY:${env.RESOLVED_TAG}
 
     # 2. Convert the JSON report to HTML locally (Blazing fast, no re-scanning)
     trivy convert \
@@ -146,7 +156,7 @@ def trivyScan() {
 }
 def push() {
     echo("Pushing the Docker image to ECR")
-    sh 'docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'
+    sh 'docker push $ECR_REGISTRY/$ECR_REPOSITORY:${env.RESOLVED_TAG}'
 }
 
 def pullTagAndPush(){
@@ -164,13 +174,13 @@ def pullTagAndPush(){
 
     sh """
     echo("Pulling the Docker image from ECR")
-    docker pull $ECR_REGISTRY/${sourceRepo}:$IMAGE_TAG
+    docker pull $ECR_REGISTRY/${sourceRepo}:${env.RESOLVED_TAG}
 
     echo("Tagging the Docker image")
-    docker tag $ECR_REGISTRY/${sourceRepo}:$IMAGE_TAG $ECR_REGISTRY/${targetRepo}:$IMAGE_TAG
+    docker tag $ECR_REGISTRY/${sourceRepo}:${env.RESOLVED_TAG} $ECR_REGISTRY/${targetRepo}:${env.RESOLVED_TAG}
 
     echo("Pushing the Docker image to ECR")
-    docker push $ECR_REGISTRY/${targetRepo}:$IMAGE_TAG
+    docker push $ECR_REGISTRY/${targetRepo}:${env.RESOLVED_TAG}
     """
 }
 
@@ -192,7 +202,7 @@ def deployToECS() {
             export EXECUTION_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/${ENVIRONMENT}-ecs-task-execution-role"
 
             echo "Declaring Image URI for ${ENVIRONMENT} environment"
-            export IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+            export IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${env.RESOLVED_TAG}"
             export SERVICE_NAME="${ENVIRONMENT}-backend-service"
             export TASK_FAMILY="${ENVIRONMENT}-backend-task"
 
