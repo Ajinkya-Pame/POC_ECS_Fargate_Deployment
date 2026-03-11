@@ -18,7 +18,7 @@ pipeline {
 
         // Tag Logic
         COMMIT_ID    = "${env.GIT_COMMIT ? env.GIT_COMMIT.take(8) : ''}"
-        RESOLVED_TAG = "${params.IMAGE_TAG ?: 'database-' + COMMIT_ID}"
+        RESOLVED_TAG = "${params.IMAGE_TAG ?: 'db-' + COMMIT_ID}"
     }
     stages {
         stage('Setup') {
