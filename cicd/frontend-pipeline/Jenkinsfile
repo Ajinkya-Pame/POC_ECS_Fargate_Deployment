@@ -233,19 +233,23 @@ def deployToECS() {
 }
 
 def cleanup() {
-    echo("Logging out from ECR")
-    sh 'docker logout $ECR_REGISTRY || true'
 
-    echo("Removing project Docker images")
+    echo("Logging out from ECR")
     sh '''
-    docker images "$ECR_REGISTRY/*" -q | sort -u | xargs -r docker rmi -f || true
+    docker logout $ECR_REGISTRY || true
     '''
 
-    echo("Pruning Docker system")
-    sh 'docker system prune -af || true'
+    echo("Removing image created in this build")
+    sh '''
+    docker rmi $ECR_REGISTRY/$ECR_REPOSITORY:${RESOLVED_TAG} || true
+    '''
 
-    echo("Cleaning workspace")
+    echo("Removing intermediate build images")
+    sh '''
+    docker image prune -f || true
+    '''
+
+    echo("Cleaning Jenkins workspace")
     cleanWs()
 }
-
 
