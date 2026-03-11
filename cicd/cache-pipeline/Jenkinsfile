@@ -99,7 +99,8 @@ pipeline {
             script { cleanup() }
             echo 'Pipeline execution complete. Workspace cleaned.'
         }
-        success { echo " ${params.ENVIRONMENT} Deployment successful! Image: ${IMAGE_TAG}" }
+        // FIXED: Using env.RESOLVED_TAG instead of IMAGE_TAG
+        success { echo " ${params.ENVIRONMENT} Deployment successful! Image: ${env.RESOLVED_TAG}" }
         failure { echo " ${params.ENVIRONMENT} Pipeline failed. Please check the logs." }
     }
 }
@@ -190,7 +191,7 @@ def deployToECS() {
     echo("Deploying the Docker image to ECS")
     def ENV_CONFIG = [
         dev:     [ CLUSTER_NAME: 'memecricket-dev-cluster' ],
-        qa: [ CLUSTER_NAME: 'memecricket-qa-cluster' ],
+        qa:      [ CLUSTER_NAME: 'memecricket-qa-cluster' ],
         prod:    [ CLUSTER_NAME: 'memecricket-prod-cluster' ]
     ]
 
@@ -202,8 +203,10 @@ def deployToECS() {
 
         echo "Declaring Image URI for ${ENVIRONMENT} environment"
         export IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${RESOLVED_TAG}"
-        export SERVICE_NAME="${ENVIRONMENT}-backend-service"
-        export TASK_FAMILY="${ENVIRONMENT}-backend-task"
+        
+        # FIXED: Changed from backend-service/task to cache-service/task
+        export SERVICE_NAME="${ENVIRONMENT}-cache-service"
+        export TASK_FAMILY="${ENVIRONMENT}-cache-task"
 
         echo "Substituting the values in the task definition"
         envsubst < container-app/ecs/cache-task-def.json > cache-task-def-ready.json
