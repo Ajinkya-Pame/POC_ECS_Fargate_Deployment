@@ -159,7 +159,7 @@ def push() {
     sh 'docker push $ECR_REGISTRY/$ECR_REPOSITORY:${RESOLVED_TAG}'
 }
 
-def pullTagAndPush(){
+def pullTagAndPush() {
     echo("Pulling, Tagging and Pushing the Docker image to ECR")
     def sourceRepo = ""
     def targetRepo = "${params.ENVIRONMENT}-db-memecricket"
@@ -172,16 +172,21 @@ def pullTagAndPush(){
         sourceRepo = "qa-db-memecricket"
     }
 
-    sh """
-    echo("Pulling the Docker image from ECR")
-    docker pull $ECR_REGISTRY/${sourceRepo}:${RESOLVED_TAG}
+    // Pass the Groovy variables securely into the shell environment
+    withEnv(["SOURCE_REPO=${sourceRepo}", "TARGET_REPO=${targetRepo}"]) {
+        
+        // Using single quotes (''') for security, and standard Bash echo commands
+        sh '''
+        echo "Pulling the Docker image from ECR"
+        docker pull $ECR_REGISTRY/$SOURCE_REPO:$RESOLVED_TAG
 
-    echo("Tagging the Docker image")
-    docker tag $ECR_REGISTRY/${sourceRepo}:${RESOLVED_TAG} $ECR_REGISTRY/${targetRepo}:${RESOLVED_TAG}
+        echo "Tagging the Docker image"
+        docker tag $ECR_REGISTRY/$SOURCE_REPO:$RESOLVED_TAG $ECR_REGISTRY/$TARGET_REPO:$RESOLVED_TAG
 
-    echo("Pushing the Docker image to ECR")
-    docker push $ECR_REGISTRY/${targetRepo}:${RESOLVED_TAG}
-    """
+        echo "Pushing the Docker image to ECR"
+        docker push $ECR_REGISTRY/$TARGET_REPO:$RESOLVED_TAG
+        '''
+    }
 }
 
 def deployToECS() {
