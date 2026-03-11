@@ -212,22 +212,38 @@ def deployToECS() {
             envsubst < container-app/ecs/database-task-def.json > database-task-def-ready.json
 
             echo "Registering the task definition"
-            aws ecs register-task-definition --cli-input-json file://database-task-def-ready.json --region ${AWS_DEFAULT_REGION} > /dev/null
+            TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://databse-task-def-ready.json \
+            --query 'taskDefinition.taskDefinitionArn')
 
-            echo "Updating the service"
-            aws ecs update-service --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --task-definition ${TASK_FAMILY} --force-new-deployment --region ${AWS_DEFAULT_REGION} > /dev/null
+            aws ecs update-service \
+            --cluster ${CLUSTER_NAME} \
+            --service ${SERVICE_NAME} \
+            --task-definition $TASK_DEF_ARN \
+            --force-new-deployment
         '''
     }
 }
 
 def cleanup() {
+
     echo("Logging out from ECR")
-    sh 'docker logout $ECR_REGISTRY || true'
+    sh '''
+    docker logout $ECR_REGISTRY || true
+    '''
 
-    echo("Pruning the Docker system")
-    sh 'docker system prune -f --filter "label!=keep" || true'
+    echo("Removing image created in this build")
+    sh '''
+    docker rmi $ECR_REGISTRY/$ECR_REPOSITORY:${RESOLVED_TAG} || true
+    '''
 
-    echo("Cleaning up the workspace")
+    echo("Removing intermediate build images")
+    sh '''
+    docker image prune -f || true
+    '''
+
+    echo("Cleaning Jenkins workspace")
     cleanWs()
 }
+
 

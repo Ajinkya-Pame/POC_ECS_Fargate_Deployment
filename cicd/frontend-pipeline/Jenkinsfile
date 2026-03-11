@@ -221,8 +221,7 @@ def deployToECS() {
         echo "Registering the task definition"
         TASK_DEF_ARN=$(aws ecs register-task-definition \
         --cli-input-json file://frontend-task-def-ready.json \
-        --query 'taskDefinition.taskDefinitionArn' \
-        --output text)
+        --query 'taskDefinition.taskDefinitionArn')
 
         aws ecs update-service \
         --cluster ${CLUSTER_NAME} \
