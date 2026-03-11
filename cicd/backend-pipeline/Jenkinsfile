@@ -9,8 +9,6 @@ pipeline {
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
         ECR_REGISTRY          = credentials('ECR_REGISTRY')
         AWS_DEFAULT_REGION    = 'ap-south-1'
-        SERVICE_NAME          = 'backend-service'
-        TASK_FAMILY           = 'backend-task'
         IMAGE_TAG             = "backend-${env.GIT_COMMIT.take(8)}"
     }
     stages {
@@ -211,6 +209,8 @@ def deployToECS() {
 
             echo "Declaring Backend URL for ${ENVIRONMENT} environment"
             export BACKEND_URL="backend.${ENVIRONMENT}.cricket.local:3001"
+            export SERVICE_NAME='${ENVIRONMENT}-backend-service'
+            export TASK_FAMILY='${ENVIRONMENT}-backend-task'
 
             echo "Substituting the values in the task definition"
             envsubst < container-app/ecs/backend-task-def.json > backend-task-def-ready.json
