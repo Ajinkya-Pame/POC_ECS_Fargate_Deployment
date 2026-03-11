@@ -21,7 +21,7 @@ resource "aws_security_group" "alb_sg" {
     cidr_blocks = [var.GLOBAL_CIDR]
   }
 
-  tags = { Name = "${var.ENVIRONMENT}-${var.ALB_SG_NAME}" }
+  tags = { Name = "${var.ALB_SG_NAME}" }
 }
 
 resource "aws_security_group" "frontend_sg" {
@@ -42,7 +42,7 @@ resource "aws_security_group" "frontend_sg" {
     cidr_blocks = [var.GLOBAL_CIDR]
   }
 
-  tags = { Name = "${var.ENVIRONMENT}-${var.FRONTEND_SG_NAME}" }
+  tags = { Name = "${var.FRONTEND_SG_NAME}" }
 }
 
 resource "aws_security_group" "backend_sg" {
@@ -63,7 +63,7 @@ resource "aws_security_group" "backend_sg" {
     cidr_blocks = [var.GLOBAL_CIDR]
   }
 
-  tags = { Name = "${var.ENVIRONMENT}-${var.BACKEND_SG_NAME}" }
+  tags = { Name = "${var.BACKEND_SG_NAME}" }
 }
 
 resource "aws_security_group" "db_sg" {
@@ -84,7 +84,7 @@ resource "aws_security_group" "db_sg" {
     cidr_blocks = [var.GLOBAL_CIDR]
   }
 
-  tags = { Name = "${var.ENVIRONMENT}-${var.DB_SG_NAME}" }
+  tags = { Name = "${var.DB_SG_NAME}" }
 }
 
 resource "aws_security_group" "cache_sg" {
@@ -105,7 +105,7 @@ resource "aws_security_group" "cache_sg" {
     cidr_blocks = [var.GLOBAL_CIDR]
   }
 
-  tags = { Name = "${var.ENVIRONMENT}-${var.CACHE_SG_NAME}" }
+  tags = { Name = "${var.CACHE_SG_NAME}" }
 }
 
 

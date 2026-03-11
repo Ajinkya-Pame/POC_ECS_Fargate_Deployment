@@ -30,10 +30,6 @@ variable "CACHE_PORT" {
   type = number
 }
 
-variable "ENVIRONMENT" {
-  type = string
-}
-
 variable "ALB_SG_NAME" {
   type = string
 }

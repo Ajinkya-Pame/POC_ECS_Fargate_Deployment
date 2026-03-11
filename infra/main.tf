@@ -3,7 +3,6 @@ module "network" {
   CIDR_BLOCK           = var.cidr_block
   AZS                  = var.azs
   GLOBAL_CIDR          = var.global_cidr
-  ENVIRONMENT          = var.environment
   VPC_NAME             = var.vpc_name
   IGW_NAME             = var.igw_name
   PUBLIC_SUBNET_NAME   = var.public_subnet_name
@@ -27,7 +26,6 @@ module "security" {
   CACHE_PORT       = var.cache_port
   HTTPS_PORT       = var.https_port
   ZERO_PORT        = var.zero_port
-  ENVIRONMENT      = var.environment
   ALB_SG_NAME      = var.alb_sg_name
   FRONTEND_SG_NAME = var.frontend_sg_name
   BACKEND_SG_NAME  = var.backend_sg_name
@@ -53,7 +51,6 @@ module "alb" {
   ALB_DEFAULT_ACTION = var.alb_default_action
   ALB_NAME           = var.alb_name
   HC_PATH            = var.hc_path
-  ENVIRONMENT        = var.environment
   CERT_ARN           = var.CERT_ARN
   HTTPS_PORT         = var.https_port
   HTTPS_PROTOCOL     = var.https_protocol
@@ -67,7 +64,6 @@ module "alb" {
 module "iam" {
   source         = "./modules/iam"
   EXEC_ROLE_NAME = var.exec_role_name
-  ENVIRONMENT    = var.environment
 }
 
 

@@ -14,20 +14,20 @@ enable_dns_hostnames = true
 enable_dns_support   = true
 
 # ========== Resource Name Tags ==========
-vpc_name            = "custom-vpc"
-igw_name            = "custom-igw"
-public_subnet_name  = "public-subnet"
-private_subnet_name = "private-subnet"
-public_rt_name      = "public-rt"
-private_rt_name     = "private-rt"
-nat_eip_name        = "nat-eip"
-nat_gw_name         = "nat-gateway"
-alb_sg_name         = "alb-sg"
-frontend_sg_name    = "frontend-sg"
-backend_sg_name     = "backend-sg"
-db_sg_name          = "db-sg"
-cache_sg_name       = "cache-sg"
-exec_role_name      = "ecs-task-execution-role"
+vpc_name            = "dev-custom-vpc"
+igw_name            = "dev-custom-igw"
+public_subnet_name  = "dev-public-subnet"
+private_subnet_name = "dev-private-subnet"
+public_rt_name      = "dev-public-rt"
+private_rt_name     = "dev-private-rt"
+nat_eip_name        = "dev-nat-eip"
+nat_gw_name         = "dev-nat-gateway"
+alb_sg_name         = "dev-alb-sg"
+frontend_sg_name    = "dev-frontend-sg"
+backend_sg_name     = "dev-backend-sg"
+db_sg_name          = "dev-db-sg"
+cache_sg_name       = "dev-cache-sg"
+exec_role_name      = "dev-ecs-task-execution-role"
 all_protocol        = "-1"
 
 # ========== Ports ==========
@@ -46,7 +46,7 @@ services = {
   cache    = "cache"
 }
 CLUSTER_NAME                               = "memecricket-dev-cluster"
-frontend_count                             = 1
+frontend_count                             = 2
 backend_count                              = 1
 db_count                                   = 1
 cache_count                                = 1
@@ -87,8 +87,8 @@ routing_policy  = "MULTIVALUE"
 dns_record      = "A"
 
 # ========== ALB ==========
-alb_name           = "main-alb"
-alb_tg_name        = "main-target-group"
+alb_name           = "dev-main-alb"
+alb_tg_name        = "dev-main-target-group"
 alb_type           = "application"
 alb_default_action = "forward"
 http_protocol      = "HTTP"

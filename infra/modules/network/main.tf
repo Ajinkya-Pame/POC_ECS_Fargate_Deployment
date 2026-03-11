@@ -5,7 +5,7 @@ resource "aws_vpc" "custom_vpc" {
   enable_dns_support   = var.ENABLE_DNS_SUPPORT
 
   tags = {
-    Name = "${var.ENVIRONMENT}-${var.VPC_NAME}"
+    Name = "${var.VPC_NAME}"
   }
 }
 
@@ -14,7 +14,7 @@ resource "aws_internet_gateway" "custom_igw" {
   vpc_id = aws_vpc.custom_vpc.id
 
   tags = {
-    Name = "${var.ENVIRONMENT}-${var.IGW_NAME}"
+    Name = "${var.IGW_NAME}"
   }
 }
 
@@ -25,7 +25,7 @@ resource "aws_subnet" "publicsubnet" {
   cidr_block        = cidrsubnet(aws_vpc.custom_vpc.cidr_block, 8, count.index)
   availability_zone = var.AZS[count.index]
   tags = {
-    Name = "${var.ENVIRONMENT}-${var.PUBLIC_SUBNET_NAME}-${count.index}"
+    Name = "${var.PUBLIC_SUBNET_NAME}-${count.index}"
   }
 }
 
@@ -36,7 +36,7 @@ resource "aws_subnet" "privatesubnet" {
   cidr_block        = cidrsubnet(aws_vpc.custom_vpc.cidr_block, 8, count.index + var.subnet_count)
   availability_zone = var.AZS[count.index]
   tags = {
-    Name = "${var.ENVIRONMENT}-${var.PRIVATE_SUBNET_NAME}-${count.index}"
+    Name = "${var.PRIVATE_SUBNET_NAME}-${count.index}"
   }
 }
 
@@ -50,7 +50,7 @@ resource "aws_route_table" "public-rt" {
   }
 
   tags = {
-    Name = "${var.ENVIRONMENT}-${var.PUBLIC_RT_NAME}"
+    Name = "${var.PUBLIC_RT_NAME}"
   }
 }
 
@@ -62,7 +62,7 @@ resource "aws_route_table" "private-rt" {
     nat_gateway_id = aws_nat_gateway.nat_gw.id
   }
   tags = {
-    Name = "${var.ENVIRONMENT}-${var.PRIVATE_RT_NAME}"
+    Name = "${var.PRIVATE_RT_NAME}"
   }
 }
 
@@ -89,7 +89,7 @@ resource "aws_route_table_association" "privatesubnet_association" {
 # 1. Elastic IP for the NAT Gateway
 resource "aws_eip" "nat_eip" {
   domain = "vpc"
-  tags   = { Name = "${var.ENVIRONMENT}-${var.NAT_EIP_NAME}" }
+  tags   = { Name = "${var.NAT_EIP_NAME}" }
 }
 
 # 2. NAT Gateway (Placed in the single Public Subnet)
@@ -97,7 +97,7 @@ resource "aws_nat_gateway" "nat_gw" {
   allocation_id = aws_eip.nat_eip.id
   subnet_id     = aws_subnet.publicsubnet[0].id
 
-  tags       = { Name = "${var.ENVIRONMENT}-${var.NAT_GW_NAME}" }
+  tags       = { Name = "${var.NAT_GW_NAME}" }
   depends_on = [aws_internet_gateway.custom_igw]
 }
 

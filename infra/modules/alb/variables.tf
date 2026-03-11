@@ -52,10 +52,6 @@ variable "HC_PATH" {
   type = string
 }
 
-variable "ENVIRONMENT" {
-  type = string
-}
-
 variable "HTTPS_PROTOCOL" {
   type = string
 }

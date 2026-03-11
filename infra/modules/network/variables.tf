@@ -9,10 +9,6 @@ variable "GLOBAL_CIDR" {
   type = string
 }
 
-variable "ENVIRONMENT" {
-  type = string
-}
-
 variable "VPC_NAME" {
   type = string
 }

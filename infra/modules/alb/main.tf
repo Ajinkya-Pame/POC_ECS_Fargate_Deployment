@@ -8,7 +8,7 @@ resource "aws_lb" "main_alb" {
 
   enable_deletion_protection = var.DELETE_PROTECTION
 
-  tags = { Name = "${var.ENVIRONMENT}-${var.ALB_NAME}" }
+  tags = { Name = "${var.ALB_NAME}" }
 }
 
 # Target Group
@@ -27,7 +27,7 @@ resource "aws_lb_target_group" "ecs_tg" {
     unhealthy_threshold = var.THRESHOLD
   }
 
-  tags = { Name = "${var.ENVIRONMENT}-${var.ALB_TG_NAME}" }
+  tags = { Name = "${var.ALB_TG_NAME}" }
 }
 
 # ALB Listener
