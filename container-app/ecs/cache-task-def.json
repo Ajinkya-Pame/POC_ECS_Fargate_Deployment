@@ -1,5 +1,5 @@
 {
-    "family": "cache-task",
+    "family": "${ENVIRONMENT}-cache-task",
     "networkMode": "awsvpc",
     "requiresCompatibilities": [
         "FARGATE"
@@ -9,7 +9,7 @@
     "executionRoleArn": "$EXECUTION_ROLE_ARN",
     "containerDefinitions": [
         {
-            "name": "cache-container",
+            "name": "${ENVIRONMENT}-cache-container",
             "image": "$IMAGE_URI",
             "essential": true,
             "portMappings": [

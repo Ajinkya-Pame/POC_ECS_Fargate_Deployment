@@ -1,5 +1,5 @@
 {
-  "family": "frontend-task",
+  "family": "${ENVIRONMENT}-frontend-task",
   "networkMode": "awsvpc",
   "requiresCompatibilities": [
     "FARGATE"
@@ -9,7 +9,7 @@
   "executionRoleArn": "$EXECUTION_ROLE_ARN",
   "containerDefinitions": [
     {
-      "name": "frontend-container",
+      "name": "${ENVIRONMENT}-frontend-container",
       "image": "$IMAGE_URI",
       "essential": true,
       "portMappings": [

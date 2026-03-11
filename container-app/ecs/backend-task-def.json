@@ -1,5 +1,5 @@
 {
-    "family": "backend-task",
+    "family": "${ENVIRONMENT}-backend-task",
     "networkMode": "awsvpc",
     "requiresCompatibilities": [
         "FARGATE"
@@ -9,7 +9,7 @@
     "executionRoleArn": "$EXECUTION_ROLE_ARN",
     "containerDefinitions": [
         {
-            "name": "backend-container",
+            "name": "${ENVIRONMENT}-backend-container",
             "image": "$IMAGE_URI",
             "essential": true,
             "portMappings": [
