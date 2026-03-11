@@ -10,10 +10,7 @@ pipeline {
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
         ECR_REGISTRY          = credentials('ECR_REGISTRY')
         AWS_DEFAULT_REGION    = 'ap-south-1'
-        SERVICE_NAME          = 'cache-service'
-        TASK_FAMILY           = 'cache-task'
-        //IMAGE_TAG             = "cache-${env.GIT_COMMIT.take(8)}"
-                // Tag Logic
+        // Tag Logic
         COMMIT_ID    = "${env.GIT_COMMIT ? env.GIT_COMMIT.take(8) : ''}"
         RESOLVED_TAG = "${params.IMAGE_TAG ?: 'cache-' + COMMIT_ID}"
     }
@@ -204,7 +201,6 @@ def deployToECS() {
         echo "Declaring Image URI for ${ENVIRONMENT} environment"
         export IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${RESOLVED_TAG}"
         
-        # FIXED: Changed from backend-service/task to cache-service/task
         export SERVICE_NAME="${ENVIRONMENT}-cache-service"
         export TASK_FAMILY="${ENVIRONMENT}-cache-task"
 

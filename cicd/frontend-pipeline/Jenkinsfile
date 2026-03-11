@@ -11,10 +11,6 @@ pipeline {
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
         ECR_REGISTRY          = credentials('ECR_REGISTRY')
         AWS_DEFAULT_REGION    = 'ap-south-1'
-        SERVICE_NAME          = 'frontend-service'
-        TASK_FAMILY           = 'frontend-task'
-        //IMAGE_TAG             = "frontend-${env.GIT_COMMIT.take(8)}"
-        // Tag Logic
         COMMIT_ID    = "${env.GIT_COMMIT ? env.GIT_COMMIT.take(8) : ''}"
         RESOLVED_TAG = "${params.IMAGE_TAG ?: 'frontend-' + COMMIT_ID}"
     }
@@ -215,8 +211,9 @@ def deployToECS() {
 
         echo "Declaring Backend URL for ${ENVIRONMENT} environment"
         export BACKEND_URL="backend.${ENVIRONMENT}.cricket.local:3001"
-        export SERVICE_NAME="${ENVIRONMENT}-backend-service"
-        export TASK_FAMILY="${ENVIRONMENT}-backend-task"
+
+        export SERVICE_NAME="${ENVIRONMENT}-frontend-service"
+        export TASK_FAMILY="${ENVIRONMENT}-frontend-task"
 
         echo "Substituting the values in the task definition"
         envsubst < container-app/ecs/frontend-task-def.json > frontend-task-def-ready.json

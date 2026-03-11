@@ -220,8 +220,6 @@ def deployToECS() {
             echo "Declaring Image URI for ${ENVIRONMENT} environment"
             export IMAGE_URI="${ECR_REGISTRY}/$ECR_REPOSITORY:${RESOLVED_TAG}"
 
-            echo "Declaring Backend URL for ${ENVIRONMENT} environment"
-            export BACKEND_URL="backend.${ENVIRONMENT}.cricket.local:3001"
             export SERVICE_NAME="${ENVIRONMENT}-backend-service"
             export TASK_FAMILY="${ENVIRONMENT}-backend-task"
 
