@@ -204,7 +204,8 @@ def deployToECS() {
         sh '''
             echo "Declaring Execution Role ARN for ${ENVIRONMENT} environment"
             export EXECUTION_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/${ENVIRONMENT}-ecs-task-execution-role"
-
+            echo "Declaring Image URI"
+            export IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${RESOLVED_TAG}"
             export SERVICE_NAME="${ENVIRONMENT}-db-service"
             export TASK_FAMILY="${ENVIRONMENT}-db-task"
 
