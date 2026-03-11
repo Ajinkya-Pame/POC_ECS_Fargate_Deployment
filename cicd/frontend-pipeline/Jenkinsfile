@@ -219,10 +219,16 @@ def deployToECS() {
         envsubst < container-app/ecs/frontend-task-def.json > frontend-task-def-ready.json
 
         echo "Registering the task definition"
-        aws ecs register-task-definition --cli-input-json file://frontend-task-def-ready.json --region ${AWS_DEFAULT_REGION} > /dev/null
+        TASK_DEF_ARN=$(aws ecs register-task-definition \
+        --cli-input-json file://frontend-task-def-ready.json \
+        --query 'taskDefinition.taskDefinitionArn' \
+        --output text)
 
-        echo "Updating the service"
-        aws ecs update-service --cluster ${CLUSTER_NAME} --service ${SERVICE_NAME} --task-definition ${TASK_FAMILY} --force-new-deployment --region ${AWS_DEFAULT_REGION} > /dev/null
+        aws ecs update-service \
+        --cluster ${CLUSTER_NAME} \
+        --service ${SERVICE_NAME} \
+        --task-definition $TASK_DEF_ARN \
+        --force-new-deployment
     '''
 }
 
@@ -230,10 +236,15 @@ def cleanup() {
     echo("Logging out from ECR")
     sh 'docker logout $ECR_REGISTRY || true'
 
-    echo("Pruning the Docker system")
-    sh 'docker system prune -f --filter "label!=keep" || true'
+    echo("Removing project Docker images")
+    sh '''
+    docker images "$ECR_REGISTRY/*" -q | sort -u | xargs -r docker rmi -f || true
+    '''
 
-    echo("Cleaning up the workspace")
+    echo("Pruning Docker system")
+    sh 'docker system prune -af || true'
+
+    echo("Cleaning workspace")
     cleanWs()
 }
 
