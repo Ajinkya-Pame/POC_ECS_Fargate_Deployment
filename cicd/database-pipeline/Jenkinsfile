@@ -13,7 +13,7 @@ pipeline {
         POSTGRES_DB           = 'cricket_db'
         POSTGRES_USER         = 'cricket'
         DEV_SOURCE_REPO = "dev-db-memecricket"
-        QA_SOURCE_REPO = "dev-db-memecricket"
+        QA_SOURCE_REPO = "qa-db-memecricket"
 
         // Tag Logic
         COMMIT_ID    = "${env.GIT_COMMIT ? env.GIT_COMMIT.take(8) : ''}"

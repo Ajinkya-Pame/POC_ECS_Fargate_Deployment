@@ -109,11 +109,6 @@ variable "POSTGRES_PASSWORD" {
   sensitive = true
 }
 
-variable "desired_count" {
-  type    = number
-  default = 1
-}
-
 variable "ecs_prefix" {
   type = string
 }

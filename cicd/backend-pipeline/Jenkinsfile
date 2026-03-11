@@ -40,15 +40,8 @@ pipeline {
                 script { trivyScan() }
             }
         }
-        stage('Push to DEV ECR'){
-            when {
-                expression { params.ENVIRONMENT == 'dev' }
-            }
-            steps {
-                script { push() }
-            }
-        }
-        stage('Push') {
+
+        stage('Push to DEV ECR') {
             when { expression { params.ENVIRONMENT == 'dev' && params.IMAGE_TAG == '' } }
             steps {
                 script { push() }

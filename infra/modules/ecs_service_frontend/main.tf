@@ -3,44 +3,44 @@ resource "aws_cloudwatch_log_group" "frontend_log_group" {
   retention_in_days = var.RETENTION_DAYS
 }
 
-# resource "aws_ecs_task_definition" "frontend_task" {
-#   family                   = "${var.ENVIRONMENT}-${var.SERVICE_NAME}-${var.TASK}"
-#   network_mode             = var.NETWORK_MODE
-#   requires_compatibilities = [var.REQ_COMPATIBILITY]
-#   cpu                      = var.CPU
-#   memory                   = var.MEMORY
-#   execution_role_arn       = var.EXECUTION_ROLE_ARN
+resource "aws_ecs_task_definition" "frontend_task" {
+  family                   = "${var.ENVIRONMENT}-${var.SERVICE_NAME}-${var.TASK}"
+  network_mode             = var.NETWORK_MODE
+  requires_compatibilities = [var.REQ_COMPATIBILITY]
+  cpu                      = var.CPU
+  memory                   = var.MEMORY
+  execution_role_arn       = var.EXECUTION_ROLE_ARN
 
-#   container_definitions = jsonencode([
-#     {
-#       name      = "${var.ENVIRONMENT}-${var.SERVICE_NAME}-${var.CONTAINER}"
-#       image     = var.IMAGE_URL
-#       essential = var.ESSENTIAL_VALUE
-#       portMappings = [
-#         {
-#           containerPort = var.CONTAINER_PORT
-#           hostPort      = var.CONTAINER_PORT
-#           protocol      = var.TCP_PROTOCOL
-#         }
-#       ]
-#       logConfiguration = {
-#         logDriver = var.LOG_DRIVER
-#         options = {
-#           "awslogs-group"         = aws_cloudwatch_log_group.frontend_log_group.name
-#           "awslogs-region"        = var.REGION
-#           "awslogs-stream-prefix" = var.ECS_PREFIX
-#         }
-#       }
-#     }
-#   ])
-# }
+  container_definitions = jsonencode([
+    {
+      name      = "${var.ENVIRONMENT}-${var.SERVICE_NAME}-${var.CONTAINER}"
+      image     = var.IMAGE_URL
+      essential = var.ESSENTIAL_VALUE
+      portMappings = [
+        {
+          containerPort = var.CONTAINER_PORT
+          hostPort      = var.CONTAINER_PORT
+          protocol      = var.TCP_PROTOCOL
+        }
+      ]
+      logConfiguration = {
+        logDriver = var.LOG_DRIVER
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.frontend_log_group.name
+          "awslogs-region"        = var.REGION
+          "awslogs-stream-prefix" = var.ECS_PREFIX
+        }
+      }
+    }
+  ])
+}
 
 resource "aws_ecs_service" "frontend_service" {
-  name    = "${var.ENVIRONMENT}-${var.SERVICE_NAME}-${var.SERVICE}"
-  cluster = var.CLUSTER_ID
-  # task_definition = aws_ecs_task_definition.frontend_task.arn
-  launch_type   = var.REQ_COMPATIBILITY
-  desired_count = var.DESIRED_COUNT
+  name            = "${var.ENVIRONMENT}-${var.SERVICE_NAME}-${var.SERVICE}"
+  cluster         = var.CLUSTER_ID
+  task_definition = aws_ecs_task_definition.frontend_task.arn
+  launch_type     = var.REQ_COMPATIBILITY
+  desired_count   = var.DESIRED_COUNT
 
   network_configuration {
     subnets          = var.PRIVATE_SUBNETS
