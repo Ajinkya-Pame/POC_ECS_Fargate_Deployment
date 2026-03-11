@@ -3,6 +3,7 @@ pipeline {
     agent any
     parameters {
         choice(name: 'ENVIRONMENT', choices: ['dev', 'qa', 'prod'], description: 'Target deployment environment')
+        string(name: 'IMAGE_TAG', defaultValue: '', description: 'Override the container image tag for deployment/rollback. Leave empty to use latest commit.')    
     }
     environment {
         AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
@@ -10,8 +11,8 @@ pipeline {
         ECR_REGISTRY          = credentials('ECR_REGISTRY')
         AWS_DEFAULT_REGION    = 'ap-south-1'
         // IMAGE_TAG             = "backend-${env.GIT_COMMIT.take(8)}"
-        DEV_SOURCE_REPO = "dev-db-memecricket"
-        QA_SOURCE_REPO = "qa-db-memecricket"
+        DEV_SOURCE_REPO = "dev-backend-memecricket"
+        QA_SOURCE_REPO = "qa-backend-memecricket"
 
         // Tag Logic
         COMMIT_ID    = "${env.GIT_COMMIT ? env.GIT_COMMIT.take(8) : ''}"
@@ -172,11 +173,11 @@ def pullTagAndPush(){
     def targetRepo = "${params.ENVIRONMENT}-backend-memecricket"
 
     if(params.ENVIRONMENT == "qa"){
-        sourceRepo = ${DEV_SOURCE_REPO}
+        sourceRepo = env.DEV_SOURCE_REPO
     }
 
     if(params.ENVIRONMENT == "prod"){
-        sourceRepo = ${DEV_SOURCE_REPO}
+        sourceRepo = env.QA_SOURCE_REPO
     }
 
     withEnv(["SOURCE_REPO=${sourceRepo}", "TARGET_REPO=${targetRepo}"]) {
