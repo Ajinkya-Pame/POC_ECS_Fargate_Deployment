@@ -17,8 +17,8 @@ pipeline {
         POSTGRES_USER         = 'cricket'
 
         // Tag Logic
-        COMMIT_ID           = "${env.GIT_COMMIT ? env.GIT_COMMIT.take(8) : ''}"
-        RESOLVED_TAG        = "${params.IMAGE_TAG ?: database-${env.GIT_COMMIT.take(8)}}"
+        COMMIT_ID    = "${env.GIT_COMMIT ? env.GIT_COMMIT.take(8) : ''}"
+        RESOLVED_TAG = "${params.IMAGE_TAG ?: 'database-' + COMMIT_ID}"
     }
     stages {
         stage('Setup') {
