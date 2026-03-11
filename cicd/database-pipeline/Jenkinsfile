@@ -193,6 +193,8 @@ def deployToECS() {
 
             echo "Declaring Image URI for ${ENVIRONMENT} environment"
             export IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+            export SERVICE_NAME="${ENVIRONMENT}-backend-service"
+            export TASK_FAMILY="${ENVIRONMENT}-backend-task"
 
             echo "Substituting the values in the task definition"
             envsubst < container-app/ecs/database-task-def.json > database-task-def-ready.json
