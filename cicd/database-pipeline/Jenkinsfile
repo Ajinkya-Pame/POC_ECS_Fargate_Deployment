@@ -189,7 +189,7 @@ def deployToECS() {
         env.CLUSTER_NAME = ENV_CONFIG[params.ENVIRONMENT].CLUSTER_NAME
         sh '''
             echo "Declaring Execution Role ARN for ${ENVIRONMENT} environment"
-            export EXECUTION_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/ecs-task-execution-role"
+            export EXECUTION_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/${ENVIRONMENT}-ecs-task-execution-role"
 
             echo "Declaring Image URI for ${ENVIRONMENT} environment"
             export IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
