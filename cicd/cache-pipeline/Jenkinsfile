@@ -153,6 +153,31 @@ def push(){
     sh 'docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'
 }
 
+def pullTagAndPush(){
+    echo("Pulling, Tagging and Pushing the Docker image to ECR")
+    def sourceRepo = ""
+    def targetRepo = "${params.ENVIRONMENT}-cache-memecricket"
+
+    if(params.ENVIRONMENT == "qa"){
+        sourceRepo = "dev-cache-memecricket"
+    }
+
+    if(params.ENVIRONMENT == "prod"){
+        sourceRepo = "qa-cache-memecricket"
+    }
+
+    sh """
+    echo("Pulling the Docker image from ECR")
+    docker pull $ECR_REGISTRY/${sourceRepo}:$IMAGE_TAG
+
+    echo("Tagging the Docker image")
+    docker tag $ECR_REGISTRY/${sourceRepo}:$IMAGE_TAG $ECR_REGISTRY/${targetRepo}:$IMAGE_TAG
+
+    echo("Pushing the Docker image to ECR")
+    docker push $ECR_REGISTRY/${targetRepo}:$IMAGE_TAG
+    """
+}
+
 def deployToECS() {
     echo("Deploying the Docker image to ECS")
     def ENV_CONFIG = [
