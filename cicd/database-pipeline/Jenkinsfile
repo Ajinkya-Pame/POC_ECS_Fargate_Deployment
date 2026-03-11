@@ -167,11 +167,11 @@ def pullTagAndPush() {
     def targetRepo = "${params.ENVIRONMENT}-db-memecricket"
 
     if(params.ENVIRONMENT == "qa"){
-        sourceRepo = ${DEV_SOURCE_REPO}
+        sourceRepo = env.DEV_SOURCE_REPO
     }
 
     if(params.ENVIRONMENT == "prod"){
-        sourceRepo = ${QA_SOURCE_REPO}
+        sourceRepo = env.QA_SOURCE_REPO
     }
 
     // Pass the Groovy variables securely into the shell environment
