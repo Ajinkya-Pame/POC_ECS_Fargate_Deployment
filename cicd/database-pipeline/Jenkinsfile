@@ -213,7 +213,7 @@ def deployToECS() {
 
             echo "Registering the task definition"
             TASK_DEF_ARN=$(aws ecs register-task-definition \
-            --cli-input-json file://databse-task-def-ready.json \
+            --cli-input-json file://database-task-def-ready.json \
             --query 'taskDefinition.taskDefinitionArn' \
             --output text)
 
