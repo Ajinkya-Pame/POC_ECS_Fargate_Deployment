@@ -94,3 +94,7 @@ variable "ESSENTIAL_VALUE" {
   type = bool
 }
 
+variable "ENVIRONMENT" {
+  type = string
+}
+

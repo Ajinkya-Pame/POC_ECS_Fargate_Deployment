@@ -108,3 +108,7 @@ variable "ESSENTIAL_VALUE" {
 variable "ASSIGN_PUBLIC_IP" {
   type = bool
 }
+
+variable "ENVIRONMENT" {
+  type = string
+}

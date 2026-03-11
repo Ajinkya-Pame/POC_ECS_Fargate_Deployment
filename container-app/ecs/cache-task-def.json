@@ -22,7 +22,7 @@
             "logConfiguration": {
                 "logDriver": "awslogs",
                 "options": {
-                    "awslogs-group": "/ecs/cache",
+                    "awslogs-group": "/ecs/${ENVIRONMENT}-cache",
                     "awslogs-region": "$AWS_DEFAULT_REGION",
                     "awslogs-stream-prefix": "ecs"
                 }

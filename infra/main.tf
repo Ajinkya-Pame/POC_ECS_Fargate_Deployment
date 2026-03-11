@@ -125,6 +125,7 @@ module "ecs_service_frontend" {
   ESSENTIAL_VALUE                            = var.essential_value
   HEALTH_CHECK_GRACE_PERIOD_SECONDS_FRONTEND = var.health_check_grace_period_seconds_frontend
   ASSIGN_PUBLIC_IP                           = var.assign_public_ip
+  ENVIRONMENT                                = var.environment
 }
 
 module "ecs_service_backend" {
@@ -156,6 +157,7 @@ module "ecs_service_backend" {
   ESSENTIAL_VALUE                           = var.essential_value
   HEALTH_CHECK_GRACE_PERIOD_SECONDS_BACKEND = var.health_check_grace_period_seconds_backend
   ASSIGN_PUBLIC_IP                          = var.assign_public_ip
+  ENVIRONMENT                               = var.environment
 }
 
 module "ecs_service_database" {
@@ -187,6 +189,7 @@ module "ecs_service_database" {
   ESSENTIAL_VALUE                      = var.essential_value
   HEALTH_CHECK_GRACE_PERIOD_SECONDS_DB = var.health_check_grace_period_seconds_db
   ASSIGN_PUBLIC_IP                     = var.assign_public_ip
+  ENVIRONMENT                          = var.environment
 }
 
 module "ecs_service_cache" {
@@ -215,5 +218,6 @@ module "ecs_service_cache" {
   HEALTH_CHECK_GRACE_PERIOD_SECONDS_CACHE = var.health_check_grace_period_seconds_cache
   ASSIGN_PUBLIC_IP                        = var.assign_public_ip
   ESSENTIAL_VALUE                         = var.essential_value
+  ENVIRONMENT                             = var.environment
 }
 

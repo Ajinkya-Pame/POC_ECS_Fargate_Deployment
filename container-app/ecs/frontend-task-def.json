@@ -28,7 +28,7 @@
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/frontend",
+          "awslogs-group": "/ecs/${ENVIRONMENT}-frontend",
           "awslogs-region": "$AWS_DEFAULT_REGION",
           "awslogs-stream-prefix": "ecs"
         }
