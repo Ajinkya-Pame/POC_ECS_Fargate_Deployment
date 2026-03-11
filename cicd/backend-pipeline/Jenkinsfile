@@ -49,6 +49,7 @@ pipeline {
             }
         }
         stage('Push') {
+            when { expression { params.ENVIRONMENT == 'dev' && params.IMAGE_TAG == '' } }
             steps {
                 script { push() }
             }
