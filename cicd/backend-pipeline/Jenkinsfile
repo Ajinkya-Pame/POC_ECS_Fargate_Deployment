@@ -9,7 +9,13 @@ pipeline {
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
         ECR_REGISTRY          = credentials('ECR_REGISTRY')
         AWS_DEFAULT_REGION    = 'ap-south-1'
-        IMAGE_TAG             = "backend-${env.GIT_COMMIT.take(8)}"
+        // IMAGE_TAG             = "backend-${env.GIT_COMMIT.take(8)}"
+        DEV_SOURCE_REPO = "dev-db-memecricket"
+        QA_SOURCE_REPO = "qa-db-memecricket"
+
+        // Tag Logic
+        COMMIT_ID    = "${env.GIT_COMMIT ? env.GIT_COMMIT.take(8) : ''}"
+        RESOLVED_TAG = "${params.IMAGE_TAG ?: 'backend-' + COMMIT_ID}"
     }
     stages {
         stage('Setup') {
@@ -28,6 +34,7 @@ pipeline {
             }
         }
         stage('Security Scan') {
+            when { expression { params.ENVIRONMENT == 'dev' && params.IMAGE_TAG == '' } }
             steps {
                 script { trivyScan() }
             }
@@ -100,7 +107,7 @@ pipeline {
             script { cleanup() }
             echo 'Pipeline execution complete. Workspace cleaned.'
         }
-        success { echo " ${params.ENVIRONMENT} Deployment successful! Image: ${IMAGE_TAG}" }
+        success { echo " ${params.ENVIRONMENT} Deployment successful! Image: ${RESOLVED_TAG}" }
         failure { echo " ${params.ENVIRONMENT} Pipeline failed. Please check the logs." }
     }
 }
@@ -126,7 +133,7 @@ def setup() {
 
 def build() {
     echo("Building the Docker image for ${params.ENVIRONMENT} environment")
-    sh 'docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .'
+    sh 'docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${RESOLVED_TAG} .'
 }
 
 def trivyScan() {
@@ -140,7 +147,7 @@ def trivyScan() {
       --severity HIGH,CRITICAL \
       --format json \
       -o trivy-report.json \
-      $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+      $ECR_REGISTRY/$ECR_REPOSITORY:${RESOLVED_TAG}
 
     # 2. Convert the JSON report to HTML locally (Blazing fast, no re-scanning)
     trivy convert \
@@ -156,7 +163,7 @@ def trivyScan() {
 
 def push(){
     echo("Pushing the Docker image to ECR")
-    sh 'docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'
+    sh 'docker push $ECR_REGISTRY/$ECR_REPOSITORY:${RESOLVED_TAG}'
 }
 
 def pullTagAndPush(){
@@ -165,23 +172,26 @@ def pullTagAndPush(){
     def targetRepo = "${params.ENVIRONMENT}-backend-memecricket"
 
     if(params.ENVIRONMENT == "qa"){
-        sourceRepo = "dev-backend-memecricket"
+        sourceRepo = ${DEV_SOURCE_REPO}
     }
 
     if(params.ENVIRONMENT == "prod"){
-        sourceRepo = "qa-backend-memecricket"
+        sourceRepo = ${DEV_SOURCE_REPO}
     }
 
-    sh """
-    echo("Pulling the Docker image from ECR")
-    docker pull $ECR_REGISTRY/${sourceRepo}:$IMAGE_TAG
+    withEnv(["SOURCE_REPO=${sourceRepo}", "TARGET_REPO=${targetRepo}"]) {
+        
+        // Using single quotes (''') for security, and standard Bash echo commands
+        sh '''
+        echo "Pulling the Docker image from ECR"
+        docker pull $ECR_REGISTRY/$SOURCE_REPO:$RESOLVED_TAG
 
-    echo("Tagging the Docker image")
-    docker tag $ECR_REGISTRY/${sourceRepo}:$IMAGE_TAG $ECR_REGISTRY/${targetRepo}:$IMAGE_TAG
+        echo "Tagging the Docker image"
+        docker tag $ECR_REGISTRY/$SOURCE_REPO:$RESOLVED_TAG $ECR_REGISTRY/$TARGET_REPO:$RESOLVED_TAG
 
-    echo("Pushing the Docker image to ECR")
-    docker push $ECR_REGISTRY/${targetRepo}:$IMAGE_TAG
-    """
+        echo "Pushing the Docker image to ECR"
+        docker push $ECR_REGISTRY/$TARGET_REPO:$RESOLVED_TAG
+        '''
 }
 
 def deployToECS() {
@@ -205,7 +215,7 @@ def deployToECS() {
             export EXECUTION_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/${ENVIRONMENT}-ecs-task-execution-role"
 
             echo "Declaring Image URI for ${ENVIRONMENT} environment"
-            export IMAGE_URI="${ECR_REGISTRY}/$ECR_REPOSITORY:${IMAGE_TAG}"
+            export IMAGE_URI="${ECR_REGISTRY}/$ECR_REPOSITORY:${RESOLVED_TAG}"
 
             echo "Declaring Backend URL for ${ENVIRONMENT} environment"
             export BACKEND_URL="backend.${ENVIRONMENT}.cricket.local:3001"
