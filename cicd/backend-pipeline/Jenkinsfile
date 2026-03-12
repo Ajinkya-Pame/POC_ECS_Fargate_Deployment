@@ -26,7 +26,7 @@ pipeline {
         }
         stage('Build in DEV') {
             when {
-                expression { params.ENVIRONMENT == 'dev' }
+                expression { params.ENVIRONMENT == 'dev' && params.IMAGE_TAG == '' }
             }
             steps {
                 dir('src/backend') {
