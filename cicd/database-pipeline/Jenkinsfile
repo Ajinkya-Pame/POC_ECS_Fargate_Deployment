@@ -49,7 +49,7 @@ pipeline {
         }
         stage('Deploy to ECS Dev') {
             when {
-                expression { params.ENVIRONMENT == 'dev' }
+                expression { params.ENVIRONMENT == 'dev' && params.IMAGE_TAG == '' }
             }
             steps {
                 script { deployToECS() }
