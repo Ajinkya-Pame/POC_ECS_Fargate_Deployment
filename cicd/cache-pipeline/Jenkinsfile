@@ -55,7 +55,7 @@ pipeline {
     post {
         always { script { cleanup() }; echo 'Pipeline complete.' }
         success { echo "${params.ENVIRONMENT} Deployment successful! Image: ${RESOLVED_TAG}" }
-        failure { echo "${params.ENVIRONMENT} Pipeline failed." }
+        failure { echo "${params.ENVIRONMENT} Pipeline failed. Please check the logs." }
     }
 }
 
@@ -96,12 +96,10 @@ def deployToEKS() {
     env.CLUSTER_NAME = clusters[params.ENVIRONMENT]
     sh '''
         aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}
-        helm upgrade --install cricket ./kube/helm/cricket-app \
-          -f ./kube/helm/cricket-app/values.yaml \
-          -f ./kube/helm/cricket-app/values-${ENVIRONMENT}.yaml \
-          -n cricket --create-namespace \
-          --set global.ecrRegistry=${ECR_REGISTRY} \
-          --set cache.image.tag=${RESOLVED_TAG}
+
+        IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${RESOLVED_TAG}"
+
+        kubectl set image deployment/cache cache=${IMAGE_URI} -n cricket
         kubectl rollout status deployment/cache -n cricket --timeout=120s
     '''
 }

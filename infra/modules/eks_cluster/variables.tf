@@ -57,11 +57,6 @@ variable "NODE_MIN_SIZE" {
   default     = 1
 }
 
-variable "EBS_CSI_ROLE_ARN" {
-  type        = string
-  description = "IAM role ARN for EBS CSI driver"
-}
-
 variable "LOG_RETENTION_DAYS" {
   type        = number
   description = "CloudWatch log retention in days"

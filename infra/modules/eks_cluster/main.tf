@@ -14,8 +14,6 @@ resource "aws_eks_cluster" "main" {
   enabled_cluster_log_types = ["api", "audit", "authenticator"]
 
   tags = { Name = var.CLUSTER_NAME }
-
-  depends_on = [var.CLUSTER_ROLE_ARN]
 }
 
 # ========== OIDC Provider (for IRSA) ==========
@@ -51,11 +49,9 @@ resource "aws_eks_node_group" "main" {
   }
 
   tags = { Name = "${var.CLUSTER_NAME}-node-group" }
-
-  depends_on = [var.NODE_ROLE_ARN]
 }
 
-# ========== EKS Addons ==========
+# ========== EKS Addons (Core only) ==========
 resource "aws_eks_addon" "vpc_cni" {
   cluster_name = aws_eks_cluster.main.name
   addon_name   = "vpc-cni"
@@ -73,14 +69,6 @@ resource "aws_eks_addon" "coredns" {
 resource "aws_eks_addon" "kube_proxy" {
   cluster_name = aws_eks_cluster.main.name
   addon_name   = "kube-proxy"
-
-  depends_on = [aws_eks_node_group.main]
-}
-
-resource "aws_eks_addon" "ebs_csi_driver" {
-  cluster_name             = aws_eks_cluster.main.name
-  addon_name               = "aws-ebs-csi-driver"
-  service_account_role_arn = var.EBS_CSI_ROLE_ARN
 
   depends_on = [aws_eks_node_group.main]
 }

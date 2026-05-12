@@ -26,12 +26,10 @@ module "security" {
   CLUSTER_NAME = var.cluster_name
 }
 
-# ========== IAM Roles ==========
+# ========== IAM Roles (Cluster + Node — no OIDC dependency) ==========
 module "iam" {
-  source            = "./modules/iam"
-  CLUSTER_NAME      = var.cluster_name
-  OIDC_PROVIDER_URL = module.eks_cluster.oidc_provider_url
-  OIDC_PROVIDER_ARN = module.eks_cluster.oidc_provider_arn
+  source       = "./modules/iam"
+  CLUSTER_NAME = var.cluster_name
 }
 
 # ========== ECR Repositories ==========
@@ -46,7 +44,7 @@ module "ecr" {
   SCAN_ON_PUSH = var.scan_on_push
 }
 
-# ========== EKS Cluster ==========
+# ========== EKS Cluster (depends on IAM, no circular ref) ==========
 module "eks_cluster" {
   source             = "./modules/eks_cluster"
   CLUSTER_NAME       = var.cluster_name
@@ -60,6 +58,92 @@ module "eks_cluster" {
   NODE_DESIRED_SIZE  = var.node_desired_size
   NODE_MAX_SIZE      = var.node_max_size
   NODE_MIN_SIZE      = var.node_min_size
-  EBS_CSI_ROLE_ARN   = module.iam.ebs_csi_role_arn
   LOG_RETENTION_DAYS = var.retention_days
+}
+
+# ========== IRSA Roles (depend on EKS OIDC — created AFTER cluster) ==========
+
+# --- ALB Controller IRSA ---
+data "aws_iam_policy_document" "alb_controller_assume" {
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    effect  = "Allow"
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks_cluster.oidc_provider_url, "https://", "")}:sub"
+      values   = ["system:serviceaccount:kube-system:aws-load-balancer-controller"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks_cluster.oidc_provider_url, "https://", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    principals {
+      type        = "Federated"
+      identifiers = [module.eks_cluster.oidc_provider_arn]
+    }
+  }
+}
+
+resource "aws_iam_role" "alb_controller_role" {
+  name               = "${var.cluster_name}-alb-controller-role"
+  assume_role_policy = data.aws_iam_policy_document.alb_controller_assume.json
+  tags               = { Name = "${var.cluster_name}-alb-controller-role" }
+}
+
+resource "aws_iam_policy" "alb_controller_policy" {
+  name   = "${var.cluster_name}-alb-controller-policy"
+  policy = file("${path.module}/modules/iam/alb-controller-policy.json")
+  tags   = { Name = "${var.cluster_name}-alb-controller-policy" }
+}
+
+resource "aws_iam_role_policy_attachment" "alb_controller_attach" {
+  policy_arn = aws_iam_policy.alb_controller_policy.arn
+  role       = aws_iam_role.alb_controller_role.name
+}
+
+# --- EBS CSI Driver IRSA ---
+data "aws_iam_policy_document" "ebs_csi_assume" {
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    effect  = "Allow"
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks_cluster.oidc_provider_url, "https://", "")}:sub"
+      values   = ["system:serviceaccount:kube-system:ebs-csi-controller-sa"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks_cluster.oidc_provider_url, "https://", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    principals {
+      type        = "Federated"
+      identifiers = [module.eks_cluster.oidc_provider_arn]
+    }
+  }
+}
+
+resource "aws_iam_role" "ebs_csi_role" {
+  name               = "${var.cluster_name}-ebs-csi-role"
+  assume_role_policy = data.aws_iam_policy_document.ebs_csi_assume.json
+  tags               = { Name = "${var.cluster_name}-ebs-csi-role" }
+}
+
+resource "aws_iam_role_policy_attachment" "ebs_csi_attach" {
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+  role       = aws_iam_role.ebs_csi_role.name
+}
+
+# --- EBS CSI Addon (depends on IRSA role) ---
+resource "aws_eks_addon" "ebs_csi_driver" {
+  cluster_name             = module.eks_cluster.cluster_name
+  addon_name               = "aws-ebs-csi-driver"
+  service_account_role_arn = aws_iam_role.ebs_csi_role.arn
 }

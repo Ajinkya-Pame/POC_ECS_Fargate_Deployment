@@ -7,6 +7,7 @@ pipeline {
     environment {
         AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+        ECR_REGISTRY          = credentials('ECR_REGISTRY')
         AWS_DEFAULT_REGION    = 'ap-south-1'
     }
     stages {
@@ -31,11 +32,14 @@ pipeline {
         stage('Install AWS Load Balancer Controller') {
             steps { script { installALBController() } }
         }
+        stage('Deploy Application via Helm') {
+            steps { script { deployApplication() } }
+        }
     }
     post {
         always { cleanWs(); echo 'Pipeline complete.' }
-        success { echo "EKS Infrastructure deployed for ${params.ENVIRONMENT}!" }
-        failure { echo "Infrastructure deployment failed for ${params.ENVIRONMENT}!" }
+        success { echo "EKS Infrastructure + Application deployed for ${params.ENVIRONMENT}!" }
+        failure { echo "Deployment failed for ${params.ENVIRONMENT}!" }
     }
 }
 
@@ -59,22 +63,22 @@ def terraformApply() {
 def configureKubectl() {
     def clusters = [dev: 'memecricket-dev-cluster', qa: 'memecricket-qa-cluster', prod: 'memecricket-prod-cluster']
     env.CLUSTER_NAME = clusters[params.ENVIRONMENT]
+    env.ENVIRONMENT = params.ENVIRONMENT
     sh "aws eks update-kubeconfig --name ${env.CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}"
 }
 
 def installALBController() {
     sh '''
-        # Get ALB controller role ARN from Terraform output
         cd infra
         ALB_ROLE_ARN=$(terraform output -raw alb_controller_role_arn)
         CLUSTER_NAME=$(terraform output -raw cluster_name)
         cd ..
 
-        # Add EKS Helm repo
         helm repo add eks https://aws.github.io/eks-charts
         helm repo update
 
-        # Install AWS Load Balancer Controller
+        VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=${ENVIRONMENT}-custom-vpc" --query "Vpcs[0].VpcId" --output text)
+
         helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
           -n kube-system \
           --set clusterName=${CLUSTER_NAME} \
@@ -82,9 +86,42 @@ def installALBController() {
           --set serviceAccount.name=aws-load-balancer-controller \
           --set serviceAccount.annotations."eks\\.amazonaws\\.com/role-arn"=${ALB_ROLE_ARN} \
           --set region=${AWS_DEFAULT_REGION} \
-          --set vpcId=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=${ENVIRONMENT}-custom-vpc" --query "Vpcs[0].VpcId" --output text)
+          --set vpcId=${VPC_ID}
 
-        # Verify controller is running
         kubectl rollout status deployment/aws-load-balancer-controller -n kube-system --timeout=120s
     '''
+}
+
+def deployApplication() {
+    echo("Deploying full application stack via Helm for ${params.ENVIRONMENT}")
+
+    withCredentials([
+        string(credentialsId: "${params.ENVIRONMENT}_DATABASE_URL", variable: 'DATABASE_URL'),
+        string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'REDIS_URL'),
+        string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'ADMIN_PASSWORD'),
+        string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'POSTGRES_PASSWORD')
+    ]) {
+        sh '''
+            helm upgrade --install cricket ./kube/helm/cricket-app \
+              -f ./kube/helm/cricket-app/values.yaml \
+              -f ./kube/helm/cricket-app/values-${ENVIRONMENT}.yaml \
+              -n cricket --create-namespace \
+              --set global.ecrRegistry=${ECR_REGISTRY} \
+              --set backend.env.databaseUrl="${DATABASE_URL}" \
+              --set backend.env.redisUrl="${REDIS_URL}" \
+              --set backend.env.adminPassword="${ADMIN_PASSWORD}" \
+              --set database.env.postgresPassword="${POSTGRES_PASSWORD}"
+
+            echo "Waiting for pods to be ready..."
+            kubectl wait --for=condition=ready pod -l app=database -n cricket --timeout=180s || true
+            kubectl wait --for=condition=ready pod -l app=cache -n cricket --timeout=120s || true
+            kubectl wait --for=condition=ready pod -l app=backend -n cricket --timeout=120s || true
+            kubectl wait --for=condition=ready pod -l app=frontend -n cricket --timeout=120s || true
+
+            echo "=== Deployment Status ==="
+            kubectl get pods -n cricket
+            kubectl get svc -n cricket
+            kubectl get ingress -n cricket
+        '''
+    }
 }
