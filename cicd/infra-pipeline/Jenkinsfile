@@ -1,4 +1,4 @@
-// ========== Pipeline ==========
+// ========== Infrastructure Pipeline (EKS) ==========
 pipeline {
     agent any
     parameters {
@@ -11,101 +11,80 @@ pipeline {
     }
     stages {
         stage('Terraform Init') {
-            steps {
-                dir('infra') {
-                    script { terraformInit() }
-                }
-            }
+            steps { dir('infra') { script { terraformInit() } } }
         }
         stage('Terraform Validate') {
-            steps {
-                dir('infra') {
-                    script { terraformValidate() }
-                }
-            }
+            steps { dir('infra') { script { terraformValidate() } } }
         }
-        /*
-        stage('Security Scan') {
-            steps {
-                dir('infra') {
-                    script { securityScan() }
-                }
-            }
-        }
-        */
         stage('Terraform Plan') {
-            steps {
-                dir('infra') {
-                    script { terraformPlan() }
-                }
-            }
+            steps { dir('infra') { script { terraformPlan() } } }
         }
-
         stage('Approve Resource Deployment') {
-            steps {
-                input message: "Deploy Infra?", ok: 'Deploy'
-            }
+            steps { input message: "Deploy EKS infrastructure for ${params.ENVIRONMENT}?", ok: 'Deploy' }
         }
         stage('Terraform Apply') {
-            steps {
-                dir('infra') {
-                    script { terraformApply() }
-                }
-            }
+            steps { dir('infra') { script { terraformApply() } } }
+        }
+        stage('Configure kubectl') {
+            steps { script { configureKubectl() } }
+        }
+        stage('Install AWS Load Balancer Controller') {
+            steps { script { installALBController() } }
         }
     }
     post {
-        always {
-            echo("Cleaning up the workspace")
-            cleanWs()
-            echo 'Pipeline execution complete. Workspace cleaned.'
-        }
-        success { echo " Terraform Deployment Succeeded for ${params.ENVIRONMENT}!" }
-        failure { echo " Terraform Deployment Failed for ${params.ENVIRONMENT}! Check logs." }
+        always { cleanWs(); echo 'Pipeline complete.' }
+        success { echo "EKS Infrastructure deployed for ${params.ENVIRONMENT}!" }
+        failure { echo "Infrastructure deployment failed for ${params.ENVIRONMENT}!" }
     }
 }
 
 // ========== Functions ==========
 def terraformInit() {
-    echo("Initializing Terraform for ${params.ENVIRONMENT} environment")
     sh "terraform init -backend-config=./environments/${params.ENVIRONMENT}/backend.config"
 }
 
 def terraformValidate() {
-    echo("Validating Terraform for ${params.ENVIRONMENT} environment")
     sh 'terraform validate'
 }
 
-def securityScan() {
-    parallel(
-        'TFLint': { sh 'tflint --init && tflint --recursive' },
-        'TFSec':  { sh 'tfsec . --soft-fail' }
-    )
-}
-
 def terraformPlan() {
-    echo("Planning Terraform for ${params.ENVIRONMENT} environment")
-    withCredentials([
-        string(credentialsId: "${params.ENVIRONMENT}_DATABASE_URL", variable: 'TF_VAR_DATABASE_URL'),
-        string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'TF_VAR_REDIS_URL'),
-        string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'TF_VAR_ADMIN_PASSWORD'),
-        string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD'),
-        string(credentialsId: "${params.ENVIRONMENT}_CERT_ARN", variable: 'TF_VAR_CERT_ARN')
-    ]) {
-        sh "terraform plan -var-file=environments/${params.ENVIRONMENT}/${params.ENVIRONMENT}.tfvars -out=tfplan"
-    }
+    sh "terraform plan -var-file=environments/${params.ENVIRONMENT}/${params.ENVIRONMENT}.tfvars -out=tfplan"
 }
 
 def terraformApply() {
-    echo("Applying Terraform for ${params.ENVIRONMENT} environment")
-    withCredentials([
-        string(credentialsId: "${params.ENVIRONMENT}_DATABASE_URL", variable: 'TF_VAR_DATABASE_URL'),
-        string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'TF_VAR_REDIS_URL'),
-        string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'TF_VAR_ADMIN_PASSWORD'),
-        string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD'),
-        string(credentialsId: "${params.ENVIRONMENT}_CERT_ARN", variable: 'TF_VAR_CERT_ARN')
-    ]) {
-        sh 'terraform apply -auto-approve tfplan'
-    }
+    sh 'terraform apply -auto-approve tfplan'
 }
 
+def configureKubectl() {
+    def clusters = [dev: 'memecricket-dev-cluster', qa: 'memecricket-qa-cluster', prod: 'memecricket-prod-cluster']
+    env.CLUSTER_NAME = clusters[params.ENVIRONMENT]
+    sh "aws eks update-kubeconfig --name ${env.CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}"
+}
+
+def installALBController() {
+    sh '''
+        # Get ALB controller role ARN from Terraform output
+        cd infra
+        ALB_ROLE_ARN=$(terraform output -raw alb_controller_role_arn)
+        CLUSTER_NAME=$(terraform output -raw cluster_name)
+        cd ..
+
+        # Add EKS Helm repo
+        helm repo add eks https://aws.github.io/eks-charts
+        helm repo update
+
+        # Install AWS Load Balancer Controller
+        helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
+          -n kube-system \
+          --set clusterName=${CLUSTER_NAME} \
+          --set serviceAccount.create=true \
+          --set serviceAccount.name=aws-load-balancer-controller \
+          --set serviceAccount.annotations."eks\\.amazonaws\\.com/role-arn"=${ALB_ROLE_ARN} \
+          --set region=${AWS_DEFAULT_REGION} \
+          --set vpcId=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=${ENVIRONMENT}-custom-vpc" --query "Vpcs[0].VpcId" --output text)
+
+        # Verify controller is running
+        kubectl rollout status deployment/aws-load-balancer-controller -n kube-system --timeout=120s
+    '''
+}

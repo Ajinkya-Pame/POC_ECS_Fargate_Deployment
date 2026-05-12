@@ -1,59 +1,147 @@
-# 🏏 MemeCricket
-**The Ultimate Real-Time Cricket Scoring & Dashboard Experience**
+# 🏏 MemeCricket — Enterprise-Grade EKS Deployment
 
-MemeCricket is a robust, high-performance web application designed to bring live cricket scoring and match management to administrators and fans alike. It features a secure administrative portal for updating live coverage, ball-by-ball commentary, and match rosters, alongside a blazing-fast public view for fans receiving real-time Server-Sent Events (SSE).
+**Multi-Container 4-Tier Microservices Application on Amazon EKS**
 
----
-
-## 🏗️ Microservices Architecture
-MemeCricket has been re-architected from a monolith into a highly scalable, fully decoupled 4-container microservices ecosystem:
-
-1. **Frontend (`/src/frontend`)**: A React.js (Vite) SPA served securely by Nginx, routing API traffic to the backend.
-2. **Backend API (`/src/backend`)**: A lightweight Node.js Express server handling business logic, database connections, and pushing real-time Server-Sent Events (SSE) to connected clients.
-3. **Database (`/src/database`)**: A PostgreSQL 16 container managing the core relational schemas (`match_state`, `commentary`, `roster`).
-4. **Cache (`/src/cache`)**: A cost-optimized Redis 7 container managing ultra-fast read caching for public queries.
+MemeCricket is a production-grade, real-time cricket scoring and match management platform deployed on **Amazon Elastic Kubernetes Service (EKS)** using Kubernetes for scalable, highly available container orchestration.
 
 ---
 
-## ☁️ AWS ECS Fargate & Infrastructure
-MemeCricket operates on a fully codified, highly available AWS Cloud infrastructure built via **Terraform** and automated via **Jenkins**.
+## 🏗️ Architecture Overview
 
-*   **Compute (ECS Fargate)**: Serverless container orchestration. The 4 microservices run autonomously in AWS Fargate.
-*   **Service Discovery (AWS Cloud Map)**: Containers communicate natively via private DNS hosted zones (`backend.cricket.local`, `database.cricket.local`). 
-*   **Routing**: AWS Application Load Balancer (ALB) securely routes external traffic to the private Frontend container.
-*   **Security**: Tightened Security Groups ensure the Database and Cache can *only* be accessed by the Backend API.
+### 4-Tier Microservices
+
+| Tier | Service | Technology | Port |
+|------|---------|-----------|------|
+| **Presentation** | Frontend (`/src/frontend`) | React.js (Vite) + Nginx | 80 |
+| **Application** | Backend API (`/src/backend`) | Node.js + Express | 3001 |
+| **Data** | Database (`/src/database`) | PostgreSQL 16 | 5432 |
+| **Caching** | Cache (`/src/cache`) | Redis 7 | 6379 |
+
+### AWS Infrastructure (Terraform)
+- **Amazon EKS** — Managed Kubernetes cluster with managed node groups (t3.medium)
+- **Amazon ECR** — Private container registry for all 4 service images
+- **VPC** — Custom VPC with public/private subnets across 3 AZs
+- **AWS Load Balancer Controller** — Automatic ALB provisioning from Kubernetes Ingress
+- **EBS CSI Driver** — Persistent volumes for PostgreSQL StatefulSet
+- **IAM (IRSA)** — Fine-grained pod-level IAM with OIDC federation
+
+### CI/CD Pipeline (Jenkins)
+- **Trivy** — Container image vulnerability scanning (HIGH/CRITICAL)
+- **Amazon ECR** — Image promotion across Dev → QA → Prod registries
+- **Helm** — Declarative Kubernetes deployments with rolling updates
+- **Zero-downtime** — `maxUnavailable: 0, maxSurge: 1` rolling update strategy
 
 ---
 
-## 🚀 Getting Started Locally
+## 📁 Project Structure
 
-Use Docker Compose to spin up the entire 4-container ecosystem identically to how it runs in AWS ECS.
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/Ajinkya-Pame/Cricket.git
-cd Cricket
-
-# 2. Start the full application stack
-docker-compose up --build -d
-
-# 3. Access the Application
-# Public View:  http://localhost
-# Admin Portal: http://localhost/admin  (Password is set in docker-compose.yml)
-# Health Check: http://localhost:3001/health
+```
+├── src/                           # Application source code
+│   ├── frontend/                  #   React + Nginx (Dockerfile)
+│   ├── backend/                   #   Node.js API (Dockerfile)
+│   ├── database/                  #   PostgreSQL + init.sql (Dockerfile)
+│   └── cache/                     #   Redis + custom config (Dockerfile)
+├── infra/                         # Terraform (IaC)
+│   ├── modules/
+│   │   ├── network/               #   VPC, Subnets, NAT Gateway
+│   │   ├── security/              #   EKS Cluster & Node Security Groups
+│   │   ├── iam/                   #   EKS Roles, IRSA, ALB Controller Policy
+│   │   ├── eks_cluster/           #   EKS Cluster, Node Group, Addons
+│   │   └── ecr/                   #   Container Registries
+│   └── environments/
+│       ├── dev/                   #   Dev tfvars + backend config
+│       ├── qa/                    #   QA tfvars + backend config
+│       └── prod/                  #   Prod tfvars + backend config
+├── kube/helm/cricket-app/         # Helm Chart
+│   ├── Chart.yaml
+│   ├── values.yaml                #   Default values
+│   ├── values-dev.yaml            #   Dev overrides
+│   ├── values-qa.yaml             #   QA overrides
+│   ├── values-prod.yaml           #   Prod overrides
+│   └── templates/
+│       ├── frontend/              #   Deployment + Service
+│       ├── backend/               #   Deployment + Service
+│       ├── database/              #   StatefulSet + Service + ConfigMap
+│       ├── cache/                 #   Deployment + Service
+│       ├── ingress.yaml           #   ALB Ingress
+│       └── secrets.yaml           #   Kubernetes Secrets
+├── cicd/                          # Jenkins Pipelines
+│   ├── frontend-pipeline/         #   Build → Trivy → ECR → Helm Deploy
+│   ├── backend-pipeline/          #   Build → Trivy → ECR → Helm Deploy
+│   ├── database-pipeline/         #   Build → Trivy → ECR → Helm Deploy
+│   ├── cache-pipeline/            #   Build → Trivy → ECR → Helm Deploy
+│   └── infra-pipeline/            #   Terraform → ALB Controller Install
+└── docker-compose.yml             # Local development
 ```
 
 ---
 
-## ⚙️ Automated CI/CD (Jenkins Pipelines)
+## 🚀 Getting Started
 
-The `/cicd` directory contains 5 distinct declarative Groovy pipelines integrating with Jenkins WSL:
+### Local Development (Docker Compose)
 
-1.  **`infra-pipeline`**: Automates `terraform init/plan/apply` to provision the VPC, Load Balancers, Cloud Map namespace, IAM Roles, and ECS Clusters. *(Must be run first)*
-2.  **`database-pipeline`**: Builds the custom Postgres image and pushes to ECR.
-3.  **`cache-pipeline`**: Builds the optimized Redis image and pushes to ECR.
-4.  **`backend-pipeline`**: Builds the Node API, pushes to ECR, and executes a zero-downtime rolling update via `aws ecs update-service`.
-5.  **`frontend-pipeline`**: Builds the React/Nginx static bundle, pushes to ECR, and deploys to the public ALB.
+```bash
+git clone https://github.com/Ajinkya-Pame/Cricket.git
+cd Cricket
+
+docker-compose up --build -d
+
+# Access:
+# Public View:  http://localhost
+# Admin Portal: http://localhost/admin
+# Health Check: http://localhost:3001/health
+```
+
+### EKS Deployment (Production)
+
+**Prerequisites:** AWS CLI, kubectl, Helm, Terraform
+
+```bash
+# 1. Provision infrastructure
+cd infra
+terraform init -backend-config=./environments/dev/backend.config
+terraform plan -var-file=environments/dev/dev.tfvars
+terraform apply
+
+# 2. Configure kubectl
+aws eks update-kubeconfig --name memecricket-dev-cluster --region ap-south-1
+
+# 3. Install AWS Load Balancer Controller (via Helm)
+helm repo add eks https://aws.github.io/eks-charts
+helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
+  -n kube-system --set clusterName=memecricket-dev-cluster
+
+# 4. Deploy application
+helm upgrade --install cricket ./kube/helm/cricket-app \
+  -f ./kube/helm/cricket-app/values.yaml \
+  -f ./kube/helm/cricket-app/values-dev.yaml \
+  -n cricket --create-namespace \
+  --set global.ecrRegistry=<ACCOUNT_ID>.dkr.ecr.ap-south-1.amazonaws.com \
+  --set backend.env.databaseUrl="postgresql://cricket:password@database:5432/cricket_db" \
+  --set backend.env.redisUrl="redis://cache:6379" \
+  --set backend.env.adminPassword="admin123" \
+  --set database.env.postgresPassword="password"
+
+# 5. Verify
+kubectl get pods -n cricket
+kubectl get ingress -n cricket
+```
 
 ---
+
+## ⚙️ CI/CD Pipelines (Jenkins)
+
+| Pipeline | Purpose | Stages |
+|----------|---------|--------|
+| `infra-pipeline` | Provision EKS cluster | Init → Validate → Plan → Apply → ALB Controller |
+| `frontend-pipeline` | Deploy React app | Build → Trivy Scan → ECR Push → Helm Deploy |
+| `backend-pipeline` | Deploy Node.js API | Build → Trivy Scan → ECR Push → Helm Deploy |
+| `database-pipeline` | Deploy PostgreSQL | Build → Trivy Scan → ECR Push → Helm Deploy |
+| `cache-pipeline` | Deploy Redis | Build → Trivy Scan → ECR Push → Helm Deploy |
+| `infra-pipeline (Destroy)` | Tear down infrastructure | Helm Uninstall → Terraform Destroy |
+
+**Image Promotion Flow:** Dev (build+scan) → QA (pull+retag) → Prod (approve+deploy)
+
+---
+
 *Maintained by [@Ajinkya-Pame](https://github.com/Ajinkya-Pame)*

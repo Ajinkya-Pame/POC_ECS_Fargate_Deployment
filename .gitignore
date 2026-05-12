@@ -24,5 +24,13 @@ yarn-error.log*
 
 # Terraform
 .terraform/
-terraform.tfstate
-terraform.tfstate.backup
+*.tfstate
+*.tfstate.backup
+*.tfplan
+.terraform.lock.hcl
+
+# Documentation (internal only)
+docs/
+
+# Temporary files
+tmp_service.json

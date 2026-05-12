@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cache
+  namespace: {{ include "cricket-app.namespace" . }}
+  labels:
+    app: cache
+    {{- include "cricket-app.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.cache.replicaCount }}
+  selector:
+    matchLabels:
+      app: cache
+  strategy:
+    type: {{ .Values.cache.strategy.type }}
+    rollingUpdate:
+      maxUnavailable: {{ .Values.cache.strategy.rollingUpdate.maxUnavailable }}
+      maxSurge: {{ .Values.cache.strategy.rollingUpdate.maxSurge }}
+  template:
+    metadata:
+      labels:
+        app: cache
+        {{- include "cricket-app.labels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: cache
+          image: {{ include "cricket-app.image" (dict "registry" .Values.global.ecrRegistry "environment" .Values.global.environment "repository" .Values.cache.image.repository "tag" .Values.cache.image.tag) }}
+          imagePullPolicy: {{ .Values.cache.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.cache.containerPort }}
+              protocol: TCP
+          resources:
+            requests:
+              cpu: {{ .Values.cache.resources.requests.cpu }}
+              memory: {{ .Values.cache.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.cache.resources.limits.cpu }}
+              memory: {{ .Values.cache.resources.limits.memory }}
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 10
+            periodSeconds: 10

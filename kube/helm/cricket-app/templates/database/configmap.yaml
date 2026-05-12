@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: database-config
+  namespace: {{ include "cricket-app.namespace" . }}
+  labels:
+    app: database
+    {{- include "cricket-app.labels" . | nindent 4 }}
+data:
+  POSTGRES_DB: {{ .Values.database.env.postgresDb | quote }}
+  POSTGRES_USER: {{ .Values.database.env.postgresUser | quote }}

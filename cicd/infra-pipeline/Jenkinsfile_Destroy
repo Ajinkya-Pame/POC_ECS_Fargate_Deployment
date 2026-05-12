@@ -1,4 +1,4 @@
-// ========== Destroy Pipeline ==========
+// ========== Destroy Pipeline (EKS) ==========
 pipeline {
     agent any
     parameters {
@@ -10,77 +10,58 @@ pipeline {
         AWS_DEFAULT_REGION    = 'ap-south-1'
     }
     stages {
+        stage('Configure kubectl') {
+            steps { script { configureKubectl() } }
+        }
+        stage('Uninstall Helm Releases') {
+            steps { script { uninstallHelm() } }
+        }
         stage('Terraform Init') {
-            steps {
-                dir('infra') {
-                    script { terraformInit() }
-                }
-            }
+            steps { dir('infra') { script { terraformInit() } } }
         }
-        
         stage('Terraform Plan (Destroy)') {
+            steps { dir('infra') { script { terraformPlanDestroy() } } }
+        }
+        stage('Approve Destruction') {
             steps {
-                dir('infra') {
-                    script { terraformPlanDestroy() }
-                }
+                input message: "DESTROY all ${params.ENVIRONMENT} infrastructure?", ok: 'Destroy Everything'
             }
         }
-
-        stage('Approve Resource Destruction') {
-            steps {
-                input message: "Are you sure you want to DESTROY the ${params.ENVIRONMENT} infrastructure?", ok: 'Destroy Everything'
-            }
-        }
-        
         stage('Terraform Destroy') {
-            steps {
-                dir('infra') {
-                    script { terraformDestroy() }
-                }
-            }
+            steps { dir('infra') { script { terraformDestroy() } } }
         }
     }
     post {
-        always {
-            echo("Cleaning up the workspace")
-            cleanWs()
-            echo 'Pipeline execution complete. Workspace cleaned.'
-        }
-        success { echo "Terraform Destruction Succeeded for ${params.ENVIRONMENT}!" }
-        failure { echo "Terraform Destruction Failed for ${params.ENVIRONMENT}! Check logs." }
+        always { cleanWs(); echo 'Pipeline complete.' }
+        success { echo "Infrastructure destroyed for ${params.ENVIRONMENT}!" }
+        failure { echo "Destruction failed for ${params.ENVIRONMENT}!" }
     }
 }
 
 // ========== Functions ==========
+def configureKubectl() {
+    def clusters = [dev: 'memecricket-dev-cluster', qa: 'memecricket-qa-cluster', prod: 'memecricket-prod-cluster']
+    env.CLUSTER_NAME = clusters[params.ENVIRONMENT]
+    env.ENVIRONMENT = params.ENVIRONMENT
+    sh "aws eks update-kubeconfig --name ${env.CLUSTER_NAME} --region ${AWS_DEFAULT_REGION} || true"
+}
+
+def uninstallHelm() {
+    sh '''
+    helm uninstall cricket -n cricket || true
+    helm uninstall aws-load-balancer-controller -n kube-system || true
+    kubectl delete namespace cricket || true
+    '''
+}
+
 def terraformInit() {
-    echo("Initializing Terraform for ${params.ENVIRONMENT} environment")
     sh "terraform init -backend-config=./environments/${params.ENVIRONMENT}/backend.config"
 }
 
 def terraformPlanDestroy() {
-    echo("Planning Terraform DESTROY for ${params.ENVIRONMENT} environment")
-    withCredentials([
-        string(credentialsId: "${params.ENVIRONMENT}_DATABASE_URL", variable: 'TF_VAR_DATABASE_URL'),
-        string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'TF_VAR_REDIS_URL'),
-        string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'TF_VAR_ADMIN_PASSWORD'),
-        string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD'),
-        string(credentialsId: "${params.ENVIRONMENT}_CERT_ARN", variable: 'TF_VAR_CERT_ARN')
-    ]) {
-        // Generates a destruction plan and saves it
-        sh "terraform plan -destroy -var-file=environments/${params.ENVIRONMENT}/${params.ENVIRONMENT}.tfvars -out=tfplan-destroy"
-    }
+    sh "terraform plan -destroy -var-file=environments/${params.ENVIRONMENT}/${params.ENVIRONMENT}.tfvars -out=tfplan-destroy"
 }
 
 def terraformDestroy() {
-    echo("Executing Terraform DESTROY for ${params.ENVIRONMENT} environment")
-    withCredentials([
-        string(credentialsId: "${params.ENVIRONMENT}_DATABASE_URL", variable: 'TF_VAR_DATABASE_URL'),
-        string(credentialsId: "${params.ENVIRONMENT}_REDIS_URL", variable: 'TF_VAR_REDIS_URL'),
-        string(credentialsId: "${params.ENVIRONMENT}_ADMIN_PASSWORD", variable: 'TF_VAR_ADMIN_PASSWORD'),
-        string(credentialsId: "${params.ENVIRONMENT}_POSTGRES_PASSWORD", variable: 'TF_VAR_POSTGRES_PASSWORD'),
-        string(credentialsId: "${params.ENVIRONMENT}_CERT_ARN", variable: 'TF_VAR_CERT_ARN')
-    ]) {
-        // Applies the destruction plan
-        sh 'terraform apply -auto-approve tfplan-destroy'
-    }
+    sh 'terraform apply -auto-approve tfplan-destroy'
 }

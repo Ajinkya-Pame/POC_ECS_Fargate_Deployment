@@ -1,111 +1,72 @@
-resource "aws_security_group" "alb_sg" {
-  name   = var.ALB_SG_NAME
-  vpc_id = var.VPC_ID
+# ========== EKS Cluster Security Group ==========
+resource "aws_security_group" "eks_cluster_sg" {
+  name        = "${var.CLUSTER_NAME}-cluster-sg"
+  description = "Security group for EKS cluster control plane"
+  vpc_id      = var.VPC_ID
 
-  ingress {
-    from_port   = var.CONTAINER_PORT
-    to_port     = var.CONTAINER_PORT
-    protocol    = var.TCP_PROTOCOL
-    cidr_blocks = [var.GLOBAL_CIDR] # "0.0.0.0/0"
-  }
-  ingress {
-    from_port   = var.HTTPS_PORT
-    to_port     = var.HTTPS_PORT
-    protocol    = var.TCP_PROTOCOL
-    cidr_blocks = [var.GLOBAL_CIDR] # "0.0.0.0/0"
-  }
-  egress {
-    from_port   = var.ZERO_PORT
-    to_port     = var.ZERO_PORT
-    protocol    = var.ALL_PROTOCOL
-    cidr_blocks = [var.GLOBAL_CIDR]
-  }
-
-  tags = { Name = "${var.ALB_SG_NAME}" }
+  tags = { Name = "${var.CLUSTER_NAME}-cluster-sg" }
 }
 
-resource "aws_security_group" "frontend_sg" {
-  name   = var.FRONTEND_SG_NAME
-  vpc_id = var.VPC_ID
-
-  ingress {
-    from_port       = var.CONTAINER_PORT
-    to_port         = var.CONTAINER_PORT
-    protocol        = var.TCP_PROTOCOL
-    security_groups = [aws_security_group.alb_sg.id]
-  }
-
-  egress {
-    from_port   = var.ZERO_PORT
-    to_port     = var.ZERO_PORT
-    protocol    = var.ALL_PROTOCOL
-    cidr_blocks = [var.GLOBAL_CIDR]
-  }
-
-  tags = { Name = "${var.FRONTEND_SG_NAME}" }
+resource "aws_vpc_security_group_ingress_rule" "cluster_ingress_https" {
+  security_group_id            = aws_security_group.eks_cluster_sg.id
+  referenced_security_group_id = aws_security_group.eks_node_sg.id
+  from_port                    = 443
+  to_port                      = 443
+  ip_protocol                  = "tcp"
+  description                  = "Allow worker nodes to communicate with cluster API"
 }
 
-resource "aws_security_group" "backend_sg" {
-  name   = var.BACKEND_SG_NAME
-  vpc_id = var.VPC_ID
-
-  ingress {
-    from_port       = var.BACKEND_PORT
-    to_port         = var.BACKEND_PORT
-    protocol        = var.TCP_PROTOCOL
-    security_groups = [aws_security_group.frontend_sg.id]
-  }
-
-  egress {
-    from_port   = var.ZERO_PORT
-    to_port     = var.ZERO_PORT
-    protocol    = var.ALL_PROTOCOL
-    cidr_blocks = [var.GLOBAL_CIDR]
-  }
-
-  tags = { Name = "${var.BACKEND_SG_NAME}" }
+resource "aws_vpc_security_group_egress_rule" "cluster_egress_all" {
+  security_group_id = aws_security_group.eks_cluster_sg.id
+  cidr_ipv4         = var.GLOBAL_CIDR
+  ip_protocol       = "-1"
+  description       = "Allow all outbound traffic"
 }
 
-resource "aws_security_group" "db_sg" {
-  name   = var.DB_SG_NAME
-  vpc_id = var.VPC_ID
+# ========== EKS Node Group Security Group ==========
+resource "aws_security_group" "eks_node_sg" {
+  name        = "${var.CLUSTER_NAME}-node-sg"
+  description = "Security group for EKS worker nodes"
+  vpc_id      = var.VPC_ID
 
-  ingress {
-    from_port       = var.DB_PORT
-    to_port         = var.DB_PORT
-    protocol        = var.TCP_PROTOCOL
-    security_groups = [aws_security_group.backend_sg.id]
+  tags = {
+    Name                                        = "${var.CLUSTER_NAME}-node-sg"
+    "kubernetes.io/cluster/${var.CLUSTER_NAME}"  = "owned"
   }
-
-  egress {
-    from_port   = var.ZERO_PORT
-    to_port     = var.ZERO_PORT
-    protocol    = var.ALL_PROTOCOL
-    cidr_blocks = [var.GLOBAL_CIDR]
-  }
-
-  tags = { Name = "${var.DB_SG_NAME}" }
 }
 
-resource "aws_security_group" "cache_sg" {
-  name   = var.CACHE_SG_NAME
-  vpc_id = var.VPC_ID
-
-  ingress {
-    from_port       = var.CACHE_PORT
-    to_port         = var.CACHE_PORT
-    protocol        = var.TCP_PROTOCOL
-    security_groups = [aws_security_group.backend_sg.id]
-  }
-
-  egress {
-    from_port   = var.ZERO_PORT
-    to_port     = var.ZERO_PORT
-    protocol    = var.ALL_PROTOCOL
-    cidr_blocks = [var.GLOBAL_CIDR]
-  }
-
-  tags = { Name = "${var.CACHE_SG_NAME}" }
+# Nodes can communicate with each other
+resource "aws_vpc_security_group_ingress_rule" "node_to_node" {
+  security_group_id            = aws_security_group.eks_node_sg.id
+  referenced_security_group_id = aws_security_group.eks_node_sg.id
+  ip_protocol                  = "-1"
+  description                  = "Allow nodes to communicate with each other"
 }
 
+# Cluster control plane can communicate with nodes
+resource "aws_vpc_security_group_ingress_rule" "cluster_to_node" {
+  security_group_id            = aws_security_group.eks_node_sg.id
+  referenced_security_group_id = aws_security_group.eks_cluster_sg.id
+  from_port                    = 1025
+  to_port                      = 65535
+  ip_protocol                  = "tcp"
+  description                  = "Allow cluster control plane to communicate with nodes"
+}
 
+# Allow cluster API to reach nodes on 443 (for webhooks)
+resource "aws_vpc_security_group_ingress_rule" "cluster_to_node_https" {
+  security_group_id            = aws_security_group.eks_node_sg.id
+  referenced_security_group_id = aws_security_group.eks_cluster_sg.id
+  from_port                    = 443
+  to_port                      = 443
+  ip_protocol                  = "tcp"
+  description                  = "Allow cluster API to nodes for webhooks"
+}
+
+# Nodes can access the internet
+resource "aws_vpc_security_group_egress_rule" "node_egress_all" {
+  security_group_id = aws_security_group.eks_node_sg.id
+  cidr_ipv4         = var.GLOBAL_CIDR
+  ip_protocol       = "-1"
+  description       = "Allow all outbound traffic"
+}

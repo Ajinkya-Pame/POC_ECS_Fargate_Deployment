@@ -1,0 +1,21 @@
+# =============================================================================
+#  values-prod.yaml — Production environment overrides
+# =============================================================================
+
+global:
+  environment: prod
+
+frontend:
+  replicaCount: 2
+
+backend:
+  replicaCount: 2
+
+database:
+  replicaCount: 1
+  persistence:
+    enabled: true
+    size: 10Gi
+
+cache:
+  replicaCount: 1

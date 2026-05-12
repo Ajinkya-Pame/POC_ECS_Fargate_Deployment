@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: {{ include "cricket-app.namespace" . }}
+  labels:
+    app: frontend
+    {{- include "cricket-app.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      app: frontend
+  strategy:
+    type: {{ .Values.frontend.strategy.type }}
+    rollingUpdate:
+      maxUnavailable: {{ .Values.frontend.strategy.rollingUpdate.maxUnavailable }}
+      maxSurge: {{ .Values.frontend.strategy.rollingUpdate.maxSurge }}
+  template:
+    metadata:
+      labels:
+        app: frontend
+        {{- include "cricket-app.labels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: frontend
+          image: {{ include "cricket-app.image" (dict "registry" .Values.global.ecrRegistry "environment" .Values.global.environment "repository" .Values.frontend.image.repository "tag" .Values.frontend.image.tag) }}
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.frontend.containerPort }}
+              protocol: TCP
+          env:
+            - name: BACKEND_URL
+              value: {{ .Values.frontend.env.backendUrl | quote }}
+          resources:
+            requests:
+              cpu: {{ .Values.frontend.resources.requests.cpu }}
+              memory: {{ .Values.frontend.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.frontend.resources.limits.cpu }}
+              memory: {{ .Values.frontend.resources.limits.memory }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.frontend.containerPort }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.frontend.containerPort }}
+            initialDelaySeconds: 15
+            periodSeconds: 10

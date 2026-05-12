@@ -1,57 +1,29 @@
+# ========== Common Defaults ==========
+# These are overridden by environment-specific .tfvars files
 cidr_block     = "10.0.0.0/16"
 azs            = ["ap-south-1a", "ap-south-1b", "ap-south-1c"]
 global_cidr    = "0.0.0.0/0"
-container_port = 80
-backend_port   = 3001
-db_port        = 5432
-cache_port     = 6379
-https_port     = 443
-zero_port      = 0
+region         = "ap-south-1"
+subnet_count   = 3
+
+# ========== EKS ==========
+cluster_name       = "memecricket-eks-cluster"
+k8s_version        = "1.35"
+node_instance_type = "t3.medium"
+node_desired_size  = 2
+node_max_size      = 3
+node_min_size      = 1
+retention_days     = 7
+
+# ========== ECR ==========
 services = {
   frontend = "frontend"
   backend  = "backend"
   db       = "db"
   cache    = "cache"
 }
-namespace          = "cricket.local"
-ttl                = 60
-CLUSTER_NAME       = "memecricket-fargate-cluster"
-log_driver         = "awslogs"
-region             = "ap-south-1"
-cpu                = "256"
-memory             = "512"
-network_mode       = "awsvpc"
-retention_days     = 7
-db_cpu             = "512"
-db_memory          = "1024"
-POSTGRES_DB        = "cricket_db"
-POSTGRES_USER      = "cricket"
-frontend_count     = 0
-backend_count      = 0
-db_count           = 0
-cache_count        = 0
-ecs_prefix         = "ecs"
-req_compatibility  = "FARGATE"
-tcp_protocol       = "tcp"
-service            = "service"
-container          = "container"
-task               = "task"
-fargate_base       = 1
-fargate_weight     = 100
-mutability         = "MUTABLE"
-app_name           = "memecricket"
-enc_type           = "KMS"
-dns_description    = "Private namespace for ECS microservices"
-routing_policy     = "MULTIVALUE"
-dns_record         = "A"
-alb_default_action = "forward"
-alb_name           = "main-alb"
-alb_tg_name        = "main-target-group"
-alb_type           = "application"
-http_protocol      = "HTTP"
-target_type        = "ip"
-hc_interval        = 30
-hc_timeout         = 5
-threshold          = 2
-subnet_count       = 3
-
+app_name         = "memecricket"
+mutability       = "MUTABLE"
+enc_type         = "KMS"
+force_delete_ecr = true
+scan_on_push     = true

@@ -1,6 +1,7 @@
 variable "CIDR_BLOCK" {
   type = string
 }
+
 variable "AZS" {
   type = list(string)
 }
@@ -51,4 +52,9 @@ variable "ENABLE_DNS_HOSTNAMES" {
 
 variable "ENABLE_DNS_SUPPORT" {
   type = bool
+}
+
+variable "CLUSTER_NAME" {
+  type        = string
+  description = "EKS cluster name for subnet tagging"
 }

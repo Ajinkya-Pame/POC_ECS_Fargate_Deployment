@@ -1,244 +1,114 @@
-// ========== Pipeline ==========
+// ========== Cache Pipeline (EKS) ==========
 pipeline {
     agent any
     parameters {
         choice(name: 'ENVIRONMENT', choices: ['dev', 'qa', 'prod'], description: 'Target deployment environment')
-        string(name: 'IMAGE_TAG', defaultValue: '', description: 'Override the container image tag for deployment/rollback. Leave empty to use latest commit.')    
+        string(name: 'IMAGE_TAG', defaultValue: '', description: 'Override the container image tag. Leave empty to use latest commit.')
     }
     environment {
         AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
         ECR_REGISTRY          = credentials('ECR_REGISTRY')
         AWS_DEFAULT_REGION    = 'ap-south-1'
-        // Tag Logic
         COMMIT_ID    = "${env.GIT_COMMIT ? env.GIT_COMMIT.take(8) : ''}"
         RESOLVED_TAG = "${params.IMAGE_TAG ?: 'cache-' + COMMIT_ID}"
     }
     stages {
-        stage('Setup') {
-            steps {
-                script { setup() }
-            }
-        }
-        stage('Build image in DEV') {
-            when {
-                expression { params.ENVIRONMENT == 'dev' && params.IMAGE_TAG == '' }
-            }
-            steps {
-                dir('src/cache') {
-                    script { build() }
-                }
-            }
+        stage('Setup') { steps { script { setup() } } }
+        stage('Build in DEV') {
+            when { expression { params.ENVIRONMENT == 'dev' && params.IMAGE_TAG == '' } }
+            steps { dir('src/cache') { script { build() } } }
         }
         stage('Security Scan') {
             when { expression { params.ENVIRONMENT == 'dev' && params.IMAGE_TAG == '' } }
-            steps {
-                script { trivyScan() }
-            }
+            steps { script { trivyScan() } }
         }
-        stage('Push to DEV ECR'){
+        stage('Push to DEV ECR') {
             when { expression { params.ENVIRONMENT == 'dev' && params.IMAGE_TAG == '' } }
-            steps {
-                script { push() }
-            }
+            steps { script { push() } }
         }
-        stage('Deploy to ECS DEV') {
-            when {
-                expression { params.ENVIRONMENT == 'dev' && params.IMAGE_TAG == '' }
-            }
-            steps {
-                script { deployToECS() }
-            }
+        stage('Deploy to EKS DEV') {
+            when { expression { params.ENVIRONMENT == 'dev' } }
+            steps { script { deployToEKS() } }
         }
-        stage('pull and push image to QA'){
-            when {
-                expression { params.ENVIRONMENT == 'qa' }
-            }
-            steps {
-                script { pullTagAndPush() }
-            }
+        stage('Pull and Push Image to QA') {
+            when { expression { params.ENVIRONMENT == 'qa' } }
+            steps { script { pullTagAndPush() } }
         }
-        stage('DEploy to ECS in QA'){
-            when {
-                expression { params.ENVIRONMENT == 'qa' }
-            }
-            steps {
-                script { deployToECS() }
-            }
+        stage('Deploy to EKS QA') {
+            when { expression { params.ENVIRONMENT == 'qa' } }
+            steps { script { deployToEKS() } }
         }
         stage('Approve Prod Deployment') {
-            when {
-                expression { params.ENVIRONMENT == 'prod' }
-            }
-            steps {
-                input message: "Push image and deploy application to ECS in PROD?", ok: 'Deploy'
-            }
+            when { expression { params.ENVIRONMENT == 'prod' } }
+            steps { input message: "Deploy cache to EKS in PROD?", ok: 'Deploy' }
         }
-        stage('pull and push image to PROD'){
-            when {
-                expression { params.ENVIRONMENT == 'prod' }
-            }
-            steps {
-                script { pullTagAndPush() }
-            }
+        stage('Pull and Push Image to PROD') {
+            when { expression { params.ENVIRONMENT == 'prod' } }
+            steps { script { pullTagAndPush() } }
         }
-        stage('Deploy to ECS PROD') {
-            when {
-                expression { params.ENVIRONMENT == 'prod' }
-            }
-            steps {
-                script { deployToECS() }
-            }
+        stage('Deploy to EKS PROD') {
+            when { expression { params.ENVIRONMENT == 'prod' } }
+            steps { script { deployToEKS() } }
         }
     }
     post {
-        always {
-            script { cleanup() }
-            echo 'Pipeline execution complete. Workspace cleaned.'
-        }
-        // FIXED: Using env.RESOLVED_TAG instead of IMAGE_TAG
-        success { echo " ${params.ENVIRONMENT} Deployment successful! Image: ${env.RESOLVED_TAG}" }
-        failure { echo " ${params.ENVIRONMENT} Pipeline failed. Please check the logs." }
+        always { script { cleanup() }; echo 'Pipeline complete.' }
+        success { echo "${params.ENVIRONMENT} Deployment successful! Image: ${RESOLVED_TAG}" }
+        failure { echo "${params.ENVIRONMENT} Pipeline failed." }
     }
 }
 
 // ========== Functions ==========
 def setup() {
-    echo("Setting up the pipeline for ${params.ENVIRONMENT} environment")
-
-    echo("Getting AWS Account ID")
     env.AWS_ACCOUNT_ID = sh(script: "aws sts get-caller-identity --query Account --output text", returnStdout: true).trim()
-
-    echo("Declaring ECR Repository for ${params.ENVIRONMENT} environment")
     env.ECR_REPOSITORY = "${params.ENVIRONMENT}-cache-memecricket"
-
-    echo("Declaring Environment variable for shell script")
     env.ENVIRONMENT = params.ENVIRONMENT
-
-    echo("Logging in to ECR")
     sh 'aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY'
 }
 
-def build() {
-    echo("Building the Docker image for ${params.ENVIRONMENT} environment")
-    sh 'docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${RESOLVED_TAG} .'
-}
+def build() { sh 'docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${RESOLVED_TAG} .' }
 
 def trivyScan() {
-    echo("Scanning the Docker image for vulnerabilities")
-
     sh '''
-    # 1. Scan the image ONCE and save as JSON. 
-    # (Trivy will automatically update its DB if needed, no need for manual cache steps)
-    trivy image \
-      --exit-code 0 \
-      --severity HIGH,CRITICAL \
-      --format json \
-      -o trivy-report.json \
-      $ECR_REGISTRY/$ECR_REPOSITORY:${RESOLVED_TAG}
-
-    # 2. Convert the JSON report to HTML locally (Blazing fast, no re-scanning)
-    trivy convert \
-      --format template \
-      --template "@/usr/local/share/trivy/templates/html.tpl" \
-      -o trivy-report.html \
-      trivy-report.json
+    trivy image --exit-code 0 --severity HIGH,CRITICAL --format json -o trivy-report.json $ECR_REGISTRY/$ECR_REPOSITORY:${RESOLVED_TAG}
+    trivy convert --format template --template "@/usr/local/share/trivy/templates/html.tpl" -o trivy-report.html trivy-report.json
     '''
-
-    // 3. Save the generated reports as Jenkins artifacts
     archiveArtifacts artifacts: 'trivy-report.json, trivy-report.html', allowEmptyArchive: true
 }
 
-def push(){
-    echo("Pushing the Docker image to ECR")
-    sh 'docker push $ECR_REGISTRY/$ECR_REPOSITORY:${RESOLVED_TAG}'
-}
+def push() { sh 'docker push $ECR_REGISTRY/$ECR_REPOSITORY:${RESOLVED_TAG}' }
 
-def pullTagAndPush(){
-    echo("Pulling, Tagging and Pushing the Docker image to ECR")
-    def sourceRepo = ""
+def pullTagAndPush() {
+    def sourceRepo = params.ENVIRONMENT == "qa" ? "dev-cache-memecricket" : "qa-cache-memecricket"
     def targetRepo = "${params.ENVIRONMENT}-cache-memecricket"
-
-    if(params.ENVIRONMENT == "qa"){
-        sourceRepo = "dev-cache-memecricket"
-    }
-
-    if(params.ENVIRONMENT == "prod"){
-        sourceRepo = "qa-cache-memecricket"
-    }
-
-    // Pass the Groovy variables securely into the shell environment
     withEnv(["SOURCE_REPO=${sourceRepo}", "TARGET_REPO=${targetRepo}"]) {
-        
-        // Using single quotes (''') for security, and standard Bash echo commands
         sh '''
-        echo "Pulling the Docker image from ECR"
         docker pull $ECR_REGISTRY/$SOURCE_REPO:$RESOLVED_TAG
-
-        echo "Tagging the Docker image"
         docker tag $ECR_REGISTRY/$SOURCE_REPO:$RESOLVED_TAG $ECR_REGISTRY/$TARGET_REPO:$RESOLVED_TAG
-
-        echo "Pushing the Docker image to ECR"
         docker push $ECR_REGISTRY/$TARGET_REPO:$RESOLVED_TAG
         '''
     }
 }
 
-def deployToECS() {
-    echo("Deploying the Docker image to ECS")
-    def ENV_CONFIG = [
-        dev:     [ CLUSTER_NAME: 'memecricket-dev-cluster' ],
-        qa:      [ CLUSTER_NAME: 'memecricket-qa-cluster' ],
-        prod:    [ CLUSTER_NAME: 'memecricket-prod-cluster' ]
-    ]
-
-    echo("Declaring Cluster Name for ${params.ENVIRONMENT} environment")
-    env.CLUSTER_NAME = ENV_CONFIG[params.ENVIRONMENT].CLUSTER_NAME
+def deployToEKS() {
+    def clusters = [dev: 'memecricket-dev-cluster', qa: 'memecricket-qa-cluster', prod: 'memecricket-prod-cluster']
+    env.CLUSTER_NAME = clusters[params.ENVIRONMENT]
     sh '''
-        echo "Declaring Execution Role ARN for ${ENVIRONMENT} environment"
-        export EXECUTION_ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/${ENVIRONMENT}-ecs-task-execution-role"
-
-        echo "Declaring Image URI for ${ENVIRONMENT} environment"
-        export IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${RESOLVED_TAG}"
-        
-        export SERVICE_NAME="${ENVIRONMENT}-cache-service"
-        export TASK_FAMILY="${ENVIRONMENT}-cache-task"
-
-        echo "Substituting the values in the task definition"
-        envsubst < container-app/ecs/cache-task-def.json > cache-task-def-ready.json
-
-        echo "Registering the task definition"
-        TASK_DEF_ARN=$(aws ecs register-task-definition \
-        --cli-input-json file://cache-task-def-ready.json \
-        --query 'taskDefinition.taskDefinitionArn'  \
-        --output text)
-
-        aws ecs update-service \
-        --cluster ${CLUSTER_NAME} \
-        --service ${SERVICE_NAME} \
-        --task-definition $TASK_DEF_ARN \
-        --force-new-deployment
+        aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}
+        helm upgrade --install cricket ./kube/helm/cricket-app \
+          -f ./kube/helm/cricket-app/values.yaml \
+          -f ./kube/helm/cricket-app/values-${ENVIRONMENT}.yaml \
+          -n cricket --create-namespace \
+          --set global.ecrRegistry=${ECR_REGISTRY} \
+          --set cache.image.tag=${RESOLVED_TAG}
+        kubectl rollout status deployment/cache -n cricket --timeout=120s
     '''
 }
 
 def cleanup() {
-
-    echo("Logging out from ECR")
-    sh '''
-    docker logout $ECR_REGISTRY || true
-    '''
-
-    echo("Removing image created in this build")
-    sh '''
-    docker rmi $ECR_REGISTRY/$ECR_REPOSITORY:${RESOLVED_TAG} || true
-    '''
-
-    echo("Removing intermediate build images")
-    sh '''
-    docker image prune -f || true
-    '''
-
-    echo("Cleaning Jenkins workspace")
+    sh 'docker logout $ECR_REGISTRY || true'
+    sh 'docker rmi $ECR_REGISTRY/$ECR_REPOSITORY:${RESOLVED_TAG} || true'
+    sh 'docker image prune -f || true'
     cleanWs()
 }
-

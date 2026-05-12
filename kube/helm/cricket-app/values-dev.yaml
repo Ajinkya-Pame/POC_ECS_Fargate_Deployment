@@ -1,0 +1,53 @@
+# =============================================================================
+#  values-dev.yaml — Dev environment overrides
+#  Usage: helm upgrade --install cricket ./kube/helm/cricket-app \
+#    -f ./kube/helm/cricket-app/values.yaml \
+#    -f ./kube/helm/cricket-app/values-dev.yaml \
+#    -n cricket --create-namespace
+# =============================================================================
+
+global:
+  environment: dev
+
+frontend:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 128m
+      memory: 128Mi
+    limits:
+      cpu: 256m
+      memory: 256Mi
+
+backend:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 128m
+      memory: 256Mi
+    limits:
+      cpu: 256m
+      memory: 512Mi
+
+database:
+  replicaCount: 1
+  persistence:
+    enabled: true
+    size: 5Gi
+  resources:
+    requests:
+      cpu: 256m
+      memory: 512Mi
+    limits:
+      cpu: 512m
+      memory: 1024Mi
+
+cache:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 64m
+      memory: 64Mi
+    limits:
+      cpu: 128m
+      memory: 128Mi
